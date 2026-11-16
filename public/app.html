@@ -163,7 +163,7 @@
     .conf-log { flex: 1; overflow-y: auto; padding: 8px 16px 16px; }
     .conf-line { padding: 12px 0; border-bottom: 1px dashed var(--line); }
     .conf-line small { display: block; font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
-    .conf-line p { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.55; overflow-wrap: anywhere; }
+    .conf-line p { margin: 0; font-size: var(--conf-fs, 22px); font-weight: 700; line-height: 1.55; overflow-wrap: anywhere; }
     .conf-line p.err { font-size: 13px; color: var(--warn); }
     .conf-live { padding: 8px 16px; min-height: 40px; font-size: 14px; color: var(--ink-2); background: var(--canary-2); border-top: 1px solid var(--line); }
     .conf-empty { text-align: center; color: var(--ink-2); font-size: 14px; padding: 40px 20px; line-height: 1.9; }
@@ -285,7 +285,7 @@
 
   <!-- وضع المؤتمرات -->
   <div class="conf" id="conf" role="dialog" aria-modal="true" aria-labelledby="conf-title">
-    <div class="conf-head"><h2 id="conf-title">وضع المؤتمرات</h2><button class="icon-btn" id="conf-close" aria-label="إغلاق">✕</button></div>
+    <div class="conf-head"><h2 id="conf-title">وضع المؤتمرات</h2><div style="display:flex;gap:8px"><button class="icon-btn" id="conf-size" aria-label="حجم الخط" style="font-weight:900;font-size:15px">Aa</button><button class="icon-btn" id="conf-close" aria-label="إغلاق">✕</button></div></div>
     <div class="conf-langs">
       <div><label for="conf-spk">المتحدث يتكلّم</label><select id="conf-spk"></select></div>
       <div><label for="conf-mine">أقرأ الترجمة بـ</label><select id="conf-mine"></select></div>
@@ -429,18 +429,21 @@
     }
     // نقسّم النص إلى جمل: أنعم في الإيقاع، ويتفادى انقطاع الجمل الطويلة في بعض المتصفحات.
     const splitSentences = (t) => ((t.match(/[^.!?؟。！？…\n]+[.!?؟。！？…]*/g) || [t]).map((x) => x.trim()).filter(Boolean));
-    function speakDevice(text, l, slow, voiceOverride) {
-      if (!('speechSynthesis' in window)) { setStatus('جهازك لا يدعم نطق النص.', 'err'); return; }
+    function speakDevice(text, l, slow, voiceOverride, done) {
+      if (!('speechSynthesis' in window)) { setStatus('جهازك لا يدعم نطق النص.', 'err'); if (done) done(); return; }
       try {
         speechSynthesis.cancel();
         const v = voiceOverride || pickVoice(l, voiceGender === 'male');
-        splitSentences(text).forEach((part) => {
+        const parts = splitSentences(text);
+        parts.forEach((part, i) => {
           const u = new SpeechSynthesisUtterance(part);
           u.lang = l.recCode; if (v) u.voice = v;
           u.pitch = 1; u.rate = slow ? 0.75 : 1; // بدون تغيير النبرة: هو ما كان يجعل الصوت آلياً
+          if (done && i === parts.length - 1) { u.onend = done; u.onerror = done; }
           speechSynthesis.speak(u);
         });
-      } catch (e) { setStatus('تعذّر تشغيل الصوت.', 'err'); }
+        if (done && !parts.length) done();
+      } catch (e) { setStatus('تعذّر تشغيل الصوت.', 'err'); if (done) done(); }
     }
     // صوت طبيعي من الإنترنت (خدمة جوجل غير الرسمية): يُقسَّم النص ويُشغَّل بالتتابع، وعند أي فشل نرجع لصوت الجهاز.
     let netAudio = null, speakSeq = 0;
@@ -450,12 +453,13 @@
       if (cur) out.push(cur);
       return out.flatMap((c) => c.length > 180 ? c.match(/.{1,180}/gu) : [c]);
     }
-    function speakNet(text, l, slow) {
+    function speakNet(text, l, slow, done) {
       const parts = chunkText(text), my = ++speakSeq; let i = 0;
       let failed = false;
-      const fail = () => { if (failed || my !== speakSeq) return; failed = true; speakDevice(parts.slice(i).join(' '), l, slow); };
+      const fail = () => { if (failed || my !== speakSeq) return; failed = true; speakDevice(parts.slice(i).join(' '), l, slow, undefined, done); };
       const next = () => {
-        if (my !== speakSeq || i >= parts.length) return;
+        if (my !== speakSeq) return;
+        if (i >= parts.length) { if (done) done(); return; }
         const a = new Audio(`https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx&tl=${encodeURIComponent(l.ttsCode)}&ttsspeed=${slow ? 0.3 : 1}&q=${encodeURIComponent(parts[i])}`);
         netAudio = a; a.onended = () => { i++; next(); }; a.onerror = fail;
         a.play().catch(fail);
@@ -463,15 +467,15 @@
       next();
     }
     function stopSpeaking() { speakSeq++; try { netAudio && netAudio.pause(); } catch (e) {} try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
-    function speak(text, code, slow) {
-      if (!text) return;
+    function speak(text, code, slow, done) {
+      if (!text) { if (done) done(); return; }
       stopSpeaking();
       const l = meta(code), mode = voiceMode(), online = navigator.onLine !== false;
-      if (mode === 'device') { speakDevice(text, l, slow); return; }
-      if (mode === 'natural') { if (online) speakNet(text, l, slow); else speakDevice(text, l, slow); return; }
+      if (mode === 'device') { speakDevice(text, l, slow, undefined, done); return; }
+      if (mode === 'natural') { if (online) speakNet(text, l, slow, done); else speakDevice(text, l, slow, undefined, done); return; }
       // تلقائي: أفضل صوت على الجهاز إن كان عالي الجودة (أو اختاره المستخدم)، وإلا صوت الإنترنت
       const dv = pickVoice(l, voiceGender === 'male');
-      if (!online || chosenVoice(l) || isHQ(dv)) speakDevice(text, l, slow); else speakNet(text, l, slow);
+      if (!online || chosenVoice(l) || isHQ(dv)) speakDevice(text, l, slow, undefined, done); else speakNet(text, l, slow, done);
     }
 
     // ---------- منتقي صوت اللغة ----------
@@ -582,6 +586,21 @@
 
     // ---------- وضع المؤتمرات ----------
     let confRec = null, confOn = false, confVoice = false, confLock = null; const confLines = [];
+    // نطق الترجمة بالتتابع: كل جملة تنتظر انتهاء السابقة، وإذا تراكمت أكثر من 3 نتجاوز النطق (النص يظهر دائماً) كي لا يتأخر الصوت عن المتحدث.
+    let confSpeakChain = Promise.resolve(), confSpeakGen = 0, confSpeakPending = 0;
+    function confSpeak(text, code) {
+      if (confSpeakPending >= 3) return;
+      const gen = confSpeakGen; confSpeakPending++;
+      confSpeakChain = confSpeakChain.then(() => new Promise((resolve) => {
+        const fin = () => { if (fin.done) return; fin.done = true; confSpeakPending = Math.max(0, confSpeakPending - 1); resolve(); };
+        if (gen !== confSpeakGen) { fin(); return; }
+        speak(text, code, false, fin); setTimeout(fin, 45000);
+      }));
+    }
+    function confSpeakReset() { confSpeakGen++; confSpeakPending = 0; confSpeakChain = Promise.resolve(); stopSpeaking(); }
+    const CONF_SIZES = [22, 30, 40]; let confSize = Math.min(CONF_SIZES.length - 1, Math.max(0, parseInt(store.get('las_conf_size', '0'), 10) || 0));
+    function confPaintSize() { $('conf-log').style.setProperty('--conf-fs', CONF_SIZES[confSize] + 'px'); }
+    const nearBottom = (el) => el.scrollHeight - el.scrollTop - el.clientHeight < 90;
     function confSetup() {
       const opts = LANGUAGES_14.map((l) => `<option value="${l.code}">${l.flag} ${l.nameAr}</option>`).join('');
       $('conf-spk').innerHTML = opts; $('conf-mine').innerHTML = opts; $('conf-spk').value = tgt; $('conf-mine').value = src;
@@ -590,14 +609,15 @@
       const spk = $('conf-spk').value, mine = $('conf-mine').value, log = $('conf-log');
       $('conf-empty').hidden = true;
       const d = document.createElement('div'); d.className = 'conf-line';
-      d.innerHTML = `<small dir="auto">${esc(text)}</small><p dir="auto">…</p>`; log.appendChild(d); log.scrollTop = log.scrollHeight;
+      const stick = nearBottom(log);
+      d.innerHTML = `<small dir="auto">${esc(text)}</small><p dir="auto">…</p>`; log.appendChild(d); if (stick) log.scrollTop = log.scrollHeight;
       const row = { src: text, out: '' }; confLines.push(row);
       try {
         const { t } = await enginePromise; const res = await t.translate(text, spk, mine);
         row.out = res.text; d.lastChild.textContent = res.text;
-        if (confVoice && confOn) speak(res.text, mine, false);
+        if (confVoice && confOn) confSpeak(res.text, mine);
       } catch (e) { d.lastChild.textContent = 'تعذّرت ترجمة هذه الجملة.'; d.lastChild.className = 'err'; }
-      log.scrollTop = log.scrollHeight;
+      if (stick) log.scrollTop = log.scrollHeight;
     }
     function confPaint() { $('conf-go').textContent = confOn ? 'إيقاف الاستماع' : 'ابدأ الاستماع'; $('conf-go').classList.toggle('on', confOn); $('conf-spk').disabled = $('conf-mine').disabled = confOn; }
     async function confStart() {
@@ -622,14 +642,18 @@
         try { confLock = await navigator.wakeLock.request('screen'); } catch (e) {}
       } catch (e) { $('conf-live').textContent = 'تعذّر تشغيل المايكروفون: ' + e.message; }
     }
-    function confStop() { confOn = false; try { confRec && confRec.stop(); } catch (e) {} try { confLock && confLock.release(); } catch (e) {} confLock = null; stopSpeaking(); confPaint(); $('conf-live').textContent = ''; }
-    $('conf-open').onclick = () => { if (micBusy()) return; confSetup(); $('conf').classList.add('open'); };
+    function confStop() { confOn = false; try { confRec && confRec.stop(); } catch (e) {} try { confLock && confLock.release(); } catch (e) {} confLock = null; confSpeakReset(); confPaint(); $('conf-live').textContent = ''; }
+    // الشاشة تُطفأ تلقائياً عند مغادرة الصفحة: نعيد طلب بقائها مضاءة عند العودة أثناء الاستماع
+    document.addEventListener('visibilitychange', async () => { if (document.visibilityState === 'visible' && confOn && !confLock && navigator.wakeLock) { try { confLock = await navigator.wakeLock.request('screen'); } catch (e) {} } });
+    $('conf-open').onclick = () => { if (micBusy()) return; confSetup(); confPaintSize(); $('conf').classList.add('open'); };
     $('conf-close').onclick = () => { confStop(); $('conf').classList.remove('open'); };
     $('conf-go').onclick = () => (confOn ? confStop() : confStart());
-    $('conf-voice').onclick = (e) => { confVoice = !confVoice; e.currentTarget.setAttribute('aria-pressed', confVoice); if (!confVoice) stopSpeaking(); };
+    $('conf-voice').onclick = (e) => { confVoice = !confVoice; e.currentTarget.setAttribute('aria-pressed', confVoice); if (!confVoice) confSpeakReset(); };
+    $('conf-size').onclick = () => { confSize = (confSize + 1) % CONF_SIZES.length; store.set('las_conf_size', String(confSize)); confPaintSize(); };
     $('conf-save').onclick = () => {
       if (!confLines.length) { $('conf-live').textContent = 'لا يوجد نص للحفظ بعد.'; return; }
-      const txt = confLines.map((r) => r.src + '\n' + r.out).join('\n\n');
+      const head = `لاس LAS — وضع المؤتمرات\n${new Date().toLocaleString('ar-EG')}\n${meta($('conf-spk').value).nameAr} ← ${meta($('conf-mine').value).nameAr}\n\n`;
+      const txt = head + confLines.map((r) => r.src + '\n' + r.out).join('\n\n');
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain;charset=utf-8' })); a.download = 'las-transcript.txt'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     };
 
