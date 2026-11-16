@@ -4,17 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>لاس LAS — المترجم الصوتي الفوري بـ 14 لغة</title>
-  <meta name="description" content="لاس: مترجم صوتي فوري لـ 14 لغة مع نطق مقسّم بالعربي. ثبّته على موبايلك من المتصفح بدون متجر تطبيقات." />
+  <meta name="description" content="لاس: تحدّث بالعربية واسمع الترجمة بـ 14 لغة، مع النطق مكتوباً بحروف عربية. ثبّته على موبايلك من المتصفح بدون متجر تطبيقات." />
   <meta property="og:title" content="لاس LAS — المترجم الصوتي الفوري" />
-  <meta property="og:description" content="تحدّث بلغتك واسمع الترجمة بصوت رجل أو امرأة، مع نطق مقسّم بالحروف العربية." />
+  <meta property="og:description" content="تحدّث بالعربية واسمع الترجمة بـ 14 لغة، مع النطق مكتوباً بحروف عربية." />
   <meta property="og:type" content="website" />
+  <meta property="og:image" content="icons/icon-512.png" />
 
   <!-- PWA -->
   <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#09090b" />
+  <meta name="theme-color" content="#DDF1FF" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="لاس" />
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
@@ -23,222 +24,194 @@
 
   <style>
     :root {
-      --bg: #09090b;
-      --bg-soft: #18181b;
-      --line: rgba(245, 158, 11, 0.28);
-      --line-soft: rgba(255, 255, 255, 0.08);
-      --text: #f8fafc;
-      --muted: #a1a1aa;
-      --gold-1: #fde68a;
-      --gold-2: #f59e0b;
-      --gold-3: #d97706;
-      --burgundy: #800020;
-      --ok: #34d399;
-      --radius: 22px;
+      --sky-0: #F3FAFF; --sky-1: #DDF1FF; --sky-2: #B9E1FB; --blue: #1F7FC4;
+      --ink: #0B2A45; --ink-2: #49657F; --line: rgba(11, 42, 69, .16);
+      --salmon: #FF7A66; --salmon-2: #F25A45; --canary: #FFD84A; --canary-2: #FFF3BF;
+      --ok: #0E8F6B;
+      --orbit: min(86vw, 360px);
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; overflow-x: clip; }
 
     body {
       font-family: 'Cairo', system-ui, -apple-system, 'Segoe UI', sans-serif;
-      background: radial-gradient(circle at 50% -10%, #1e1b4b 0%, #09090b 52%, #000 100%) fixed;
-      color: var(--text);
-      line-height: 1.7;
-      min-height: 100vh;
-      overflow-x: hidden;
-      padding-bottom: calc(env(safe-area-inset-bottom) + 24px);
+      color: var(--ink); line-height: 1.8; min-height: 100vh;
+      background:
+        radial-gradient(60vmax 60vmax at 105% -10%, rgba(255, 216, 74, .5), transparent 60%),
+        radial-gradient(50vmax 50vmax at -15% 38%, rgba(255, 122, 102, .14), transparent 62%),
+        linear-gradient(180deg, var(--sky-1) 0%, var(--sky-0) 60%, #fff 100%);
+      background-attachment: fixed;
+      padding-bottom: env(safe-area-inset-bottom);
     }
 
     a { color: inherit; }
     button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
-    :focus-visible { outline: 3px solid var(--gold-2); outline-offset: 3px; border-radius: 10px; }
+    :focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; border-radius: 10px; }
 
     .wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 20px; }
 
-    .gold-text {
-      background: linear-gradient(135deg, var(--gold-1) 0%, var(--gold-2) 50%, var(--gold-3) 100%);
-      -webkit-background-clip: text; background-clip: text;
-      -webkit-text-fill-color: transparent; color: transparent;
-    }
-
     /* ---------- الشريط العلوي ---------- */
-    .topbar { padding: calc(env(safe-area-inset-top) + 14px) 0 6px; }
+    .topbar { padding: calc(env(safe-area-inset-top) + 12px) 0 4px; }
     .topbar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-    .brand-mark {
-      width: 44px; height: 44px; border-radius: 50%; padding: 2px;
-      background: linear-gradient(135deg, var(--burgundy), #3f0d1a 45%, var(--gold-2));
-      display: grid; place-items: center;
-    }
-    .brand-mark span {
-      width: 100%; height: 100%; border-radius: 50%; background: var(--bg);
-      display: grid; place-items: center;
-      font-weight: 900; font-size: 14px; letter-spacing: 1px; color: var(--gold-2);
-      direction: ltr;
-    }
-    .brand b { font-size: 18px; font-weight: 800; }
-    .topbar a.try {
-      font-size: 14px; font-weight: 700; text-decoration: none; color: var(--gold-1);
-      padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line);
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; direction: ltr; }
+    .brand img { display: block; border-radius: 12px; box-shadow: 0 4px 12px rgba(11, 42, 69, .14); }
+    .brand b { display: block; font-weight: 900; font-size: 26px; line-height: 1; letter-spacing: 1px; }
+    .brand i { display: block; font-style: normal; font-weight: 800; font-size: 10px; letter-spacing: .04em; color: var(--blue); margin-top: 3px; white-space: nowrap; }
+    .topbar .open {
+      min-height: 44px; display: inline-flex; align-items: center; padding: 0 18px; border-radius: 999px;
+      font-weight: 800; font-size: 14px; text-decoration: none; background: #fff; border: 1.5px solid var(--ink);
     }
 
-    /* ---------- الهيرو ---------- */
-    .hero { padding: 28px 0 40px; }
-    .hero .wrap { display: grid; gap: 36px; align-items: center; }
-    .eyebrow {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 700;
-      color: var(--gold-1); background: rgba(245, 158, 11, 0.12); border: 1px solid var(--line);
-    }
-    .eyebrow i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); display: block; }
-    h1 {
-      margin-top: 16px; font-weight: 900; line-height: 1.25;
-      font-size: clamp(2rem, 8.2vw, 3.4rem);
-    }
-    .lead { margin-top: 14px; color: #d4d4d8; font-size: clamp(1rem, 3.9vw, 1.15rem); max-width: 34em; }
-
-    .cta-row { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 12px; }
+    /* ---------- أزرار ---------- */
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-      min-height: 54px; padding: 0 24px; border-radius: 16px; font-weight: 800; font-size: 1.05rem;
-      text-decoration: none; transition: transform .15s ease, filter .15s ease;
+      min-height: 54px; padding: 0 24px; border-radius: 16px; font-weight: 900; font-size: 1.05rem;
+      text-decoration: none; border: 2px solid var(--ink); transition: transform .15s ease, box-shadow .15s ease;
     }
     .btn:active { transform: scale(.98); }
-    .cta-row .btn { flex: 1 1 240px; }
-    .btn-gold {
-      color: #1c1003;
-      background: linear-gradient(135deg, var(--gold-1), var(--gold-2) 55%, var(--gold-3));
-      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.28);
-    }
-    .btn-gold:hover { filter: brightness(1.06); }
-    .btn-ghost { color: var(--gold-1); border: 1px solid var(--line); background: rgba(24, 24, 27, 0.6); }
     .btn svg { width: 22px; height: 22px; flex: none; }
+    .btn-main { background: var(--canary); color: var(--ink); box-shadow: 0 8px 22px rgba(255, 190, 20, .42); }
+    .btn-ghost { background: #fff; color: var(--ink); }
 
-    .chips { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
-    .chips li {
-      list-style: none; font-size: 13px; font-weight: 600; color: #d4d4d8;
-      padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line-soft); background: rgba(255,255,255,.03);
-    }
+    /* ---------- الهيرو ---------- */
+    .hero { padding: 26px 0 40px; }
+    .hero .wrap { display: grid; gap: 30px; align-items: center; }
+    h1 { font-weight: 900; line-height: 1.22; font-size: clamp(2.15rem, 9.4vw, 3.2rem); letter-spacing: -.01em; }
+    .lead { margin-top: 14px; font-size: clamp(1rem, 4vw, 1.15rem); color: var(--ink-2); max-width: 31em; font-weight: 600; }
+    .cta-row { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 12px; }
+    .cta-row .btn { flex: 1 1 auto; white-space: nowrap; }
+    .assure { margin-top: 14px; font-size: .92rem; font-weight: 700; color: var(--ink-2); }
 
-    /* ---------- مجسّم الموبايل ---------- */
-    .device-col { display: grid; place-items: center; }
-    .phone {
-      width: min(300px, 100%); border-radius: 38px; padding: 12px;
-      background: linear-gradient(160deg, #27272a, #0b0b0d);
-      border: 1px solid var(--line);
-      box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 0 0 6px rgba(245,158,11,.05), 0 0 80px rgba(128,0,32,.35);
+    /* المدار: اللغات الـ 14 حول المايك */
+    .stage-col { display: grid; place-items: center; }
+    .stage { position: relative; width: var(--orbit); height: var(--orbit); }
+    .stage::before, .stage::after { content: ''; position: absolute; border-radius: 50%; inset: 23px; border: 1.5px dashed rgba(31, 127, 196, .4); pointer-events: none; }
+    .stage::after { inset: 25%; border: 1px solid rgba(31, 127, 196, .16); }
+    .ring { position: absolute; inset: 0; animation: spin 90s linear infinite; pointer-events: none; }
+    .slot { position: absolute; top: 50%; left: 50%; width: 0; height: 0; transform: rotate(var(--a)) translateY(calc(var(--orbit) / -2 + 23px)); }
+    .unrot { position: absolute; transform: rotate(calc(var(--a) * -1)); }
+    .chip {
+      position: absolute; width: 46px; height: 46px; margin: -23px; border-radius: 50%; background: #fff;
+      display: grid; place-items: center; font-size: 24px; line-height: 1; border: 2px solid #fff;
+      box-shadow: 0 4px 14px rgba(11, 42, 69, .13); animation: spin-rev 90s linear infinite;
     }
-    .screen { border-radius: 28px; background: #0c0c0f; padding: 14px; display: grid; gap: 10px; }
-    .screen-head { display: flex; align-items: center; justify-content: space-between; }
-    .screen-head .t { font-weight: 800; font-size: 14px; }
-    .screen-head .live {
-      font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
-      color: #6ee7b7; background: #052e22; border: 1px solid rgba(52,211,153,.4);
-    }
-    .pair {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      font-size: 12px; font-weight: 700; color: var(--gold-1);
-      padding: 6px; border-radius: 12px; background: var(--bg-soft); border: 1px solid var(--line-soft);
-    }
-    .box { border-radius: 16px; padding: 12px; background: #000; border: 1px solid var(--line-soft); }
-    .box small { display: block; font-size: 11px; font-weight: 700; color: var(--gold-2); margin-bottom: 4px; }
-    .box.out { border: 1.5px solid rgba(245,158,11,.45); }
-    .box.out small { color: var(--ok); }
-    .box .big { font-size: 20px; font-weight: 800; line-height: 1.4; }
-    .box.out .big { color: #fbbf24; direction: ltr; text-align: left; }
-    .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
-    .pill {
-      padding: 4px 12px; border-radius: 12px; font-weight: 800; font-size: 15px; color: var(--gold-1);
-      background: rgba(245,158,11,.15); border: 1px solid rgba(245,158,11,.45);
-    }
+    @keyframes spin { to { rotate: 360deg; } }
+    @keyframes spin-rev { to { rotate: -360deg; } }
     .mic {
-      margin-top: 2px; display: flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 12px; border-radius: 16px; font-weight: 800; font-size: 13px;
-      background: linear-gradient(90deg, var(--burgundy), #9f1239 55%, #b45309);
-      border: 1px solid rgba(252,211,77,.35);
+      position: absolute; inset: 0; margin: auto; width: 44%; height: 44%; border-radius: 50%; display: grid; place-items: center; color: #fff; z-index: 3;
+      background: radial-gradient(circle at 32% 26%, #FFA797, var(--salmon) 48%, var(--salmon-2));
+      box-shadow: 0 0 0 10px rgba(255, 122, 102, .16), 0 0 0 22px rgba(255, 122, 102, .08), 0 18px 40px rgba(242, 90, 69, .42);
+      text-decoration: none; transition: scale .18s;
     }
-    .mic svg { width: 18px; height: 18px; }
+    .mic:active { scale: .95; }
+    .mic svg { width: 42%; height: 42%; }
 
-    /* ---------- الأقسام ---------- */
-    section { padding: 44px 0; }
-    .sec-head { max-width: 36em; margin-bottom: 26px; }
-    .sec-head h2 { font-size: clamp(1.5rem, 6vw, 2.2rem); font-weight: 900; line-height: 1.3; }
-    .sec-head p { margin-top: 8px; color: var(--muted); }
+    /* ---------- أقسام ---------- */
+    .sec { padding: 52px 0; }
+    .sec-head { max-width: 34em; margin-bottom: 26px; }
+    .sec-head h2 { font-size: clamp(1.55rem, 6.4vw, 2.3rem); font-weight: 900; line-height: 1.3; }
+    .sec-head p { margin-top: 8px; color: var(--ink-2); font-weight: 600; }
 
-    .grid { display: grid; gap: 14px; }
-    .card {
-      border-radius: var(--radius); padding: 20px;
-      background: rgba(24, 24, 27, 0.78); border: 1px solid var(--line-soft);
-      backdrop-filter: blur(10px);
-    }
-    .card .ico {
-      width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; margin-bottom: 12px;
-      color: var(--gold-1); background: rgba(245,158,11,.12); border: 1px solid var(--line);
-    }
-    .card .ico svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-    .card h3 { font-size: 1.1rem; font-weight: 800; }
-    .card p { margin-top: 4px; color: var(--muted); font-size: .95rem; }
+    .split { display: grid; gap: 28px; align-items: start; }
 
-    /* خطوات الاستخدام */
-    .steps { counter-reset: s; display: grid; gap: 12px; list-style: none; }
-    .steps li {
-      counter-increment: s; display: flex; gap: 14px; align-items: flex-start;
-      padding: 16px; border-radius: 18px; background: rgba(24,24,27,.6); border: 1px solid var(--line-soft);
-    }
+    /* مثال الشاشة */
+    .talk { position: relative; background: #fff; border-radius: 26px; box-shadow: 0 16px 44px rgba(11, 42, 69, .1); overflow: hidden; border: 1px solid rgba(11, 42, 69, .06); max-width: 460px; width: 100%; margin: 0 auto; }
+    .talk .pairbar { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 14px; font-weight: 800; font-size: 13px; background: var(--sky-1); border-bottom: 1px solid var(--line); }
+    .talk .pairbar svg { width: 18px; height: 18px; color: var(--blue); }
+    .talk .in { padding: 16px 18px 12px; font-size: 17px; font-weight: 600; }
+    .talk .out { border-top: 1px dashed var(--line); padding: 14px 18px 16px; background: linear-gradient(180deg, #fff, var(--sky-0)); }
+    .talk .out-text { font-size: 26px; font-weight: 800; line-height: 1.4; direction: ltr; text-align: left; }
+    .talk .phon-label { margin-top: 12px; font-size: 11px; font-weight: 800; color: var(--blue); }
+    .talk .phon { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+    .talk .phon span { background: var(--canary-2); border-bottom: 3px solid var(--canary); border-radius: 10px 10px 4px 4px; padding: 2px 10px; font-size: 17px; font-weight: 700; }
+    .talk .acts { display: flex; gap: 8px; padding: 12px 14px 14px; background: var(--sky-0); border-top: 1px solid rgba(11, 42, 69, .06); }
+    .talk .act { flex: 1; min-height: 44px; border-radius: 14px; background: #fff; border: 1px solid var(--line); font-size: 12.5px; font-weight: 800; display: grid; place-items: center; }
+    .talk .act.main { background: var(--ink); color: #fff; border-color: var(--ink); flex: 1.5; }
+
+    /* قائمة المزايا: خطوط متقطعة بدل البطاقات، على نسق المدار */
+    .feat { list-style: none; }
+    .feat li { display: grid; grid-template-columns: 46px 1fr; gap: 14px; padding: 16px 0; border-bottom: 1.5px dashed var(--line); }
+    .feat li:first-child { padding-top: 0; }
+    .feat li:last-child { border-bottom: 0; padding-bottom: 0; }
+    .feat .ico { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 1.5px solid var(--ink); color: var(--ink); }
+    .feat .ico svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+    .feat h3 { font-size: 1.08rem; font-weight: 900; line-height: 1.5; }
+    .feat p { color: var(--ink-2); font-size: .95rem; font-weight: 600; max-width: 34em; }
+
+    /* ---------- وضع المؤتمرات ---------- */
+    .conf { background: var(--ink); color: #fff; }
+    .conf .sec-head p { color: #B9CFE2; }
+    .conf .split { gap: 30px; }
+    .conf-note { margin-top: 16px; font-size: .92rem; font-weight: 700; color: var(--canary); }
+    .confcard { background: var(--sky-0); color: var(--ink); border-radius: 22px; overflow: hidden; max-width: 460px; width: 100%; margin: 0 auto; box-shadow: 0 22px 60px rgba(0, 0, 0, .35); }
+    .confcard .langs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 14px; background: #fff; border-bottom: 1px solid var(--line); }
+    .confcard .langs small { display: block; font-size: 10.5px; font-weight: 800; color: var(--blue); }
+    .confcard .langs span { display: block; font-weight: 800; font-size: 14px; padding: 6px 10px; margin-top: 2px; border: 1px solid var(--line); border-radius: 10px; background: var(--sky-0); }
+    .confcard .log { padding: 4px 16px 8px; }
+    .confcard .line { padding: 12px 0; border-bottom: 1.5px dashed var(--line); }
+    .confcard .line:last-child { border-bottom: 0; }
+    .confcard .line small { display: block; font-size: 12px; color: var(--ink-2); direction: ltr; text-align: left; margin-bottom: 2px; }
+    .confcard .line p { font-size: 20px; font-weight: 700; line-height: 1.55; }
+    .confcard .live { padding: 8px 16px; font-size: 14px; font-weight: 700; color: var(--ink-2); background: var(--canary-2); border-top: 1px solid var(--line); }
+    .confcard .bar { display: flex; gap: 8px; padding: 10px 14px; background: #fff; border-top: 1px solid var(--line); }
+    .confcard .bar span { display: grid; place-items: center; min-height: 46px; border-radius: 14px; font-weight: 800; font-size: 13px; border: 1px solid var(--line); flex: 1; }
+    .confcard .bar span.go { flex: 1.6; background: var(--salmon-2); border-color: var(--salmon-2); color: #fff; font-size: 14.5px; font-weight: 900; }
+
+    /* ---------- الخطوات ---------- */
+    .steps { counter-reset: s; display: grid; gap: 0; list-style: none; }
+    .steps li { counter-increment: s; display: flex; gap: 16px; align-items: flex-start; padding: 16px 0; border-bottom: 1.5px dashed var(--line); }
+    .steps li:last-child { border-bottom: 0; }
     .steps li::before {
-      content: counter(s); flex: none; width: 36px; height: 36px; border-radius: 50%;
-      display: grid; place-items: center; font-weight: 900; color: #1c1003;
-      background: linear-gradient(135deg, var(--gold-1), var(--gold-2));
+      content: counter(s); flex: none; width: 44px; height: 44px; border-radius: 50%;
+      display: grid; place-items: center; font-weight: 900; font-size: 1.15rem; background: var(--canary); border: 2px solid var(--ink);
     }
-    .steps b { display: block; font-weight: 800; }
-    .steps span { color: var(--muted); font-size: .95rem; }
+    .steps b { display: block; font-weight: 900; font-size: 1.08rem; }
+    .steps span { color: var(--ink-2); font-weight: 600; font-size: .96rem; }
 
-    /* قسم التثبيت */
-    .install-box {
-      border-radius: 28px; padding: 22px; border: 1.5px solid var(--line);
-      background: linear-gradient(160deg, rgba(128,0,32,.22), rgba(24,24,27,.85) 40%);
-    }
-    .tabs { display: inline-flex; padding: 4px; gap: 4px; border-radius: 14px; background: #000; border: 1px solid var(--line-soft); }
-    .tab { padding: 8px 18px; border-radius: 10px; font-weight: 800; font-size: .95rem; color: var(--muted); min-height: 44px; }
-    .tab[aria-selected="true"] { color: #1c1003; background: linear-gradient(135deg, var(--gold-1), var(--gold-2)); }
+    /* ---------- التثبيت ---------- */
+    .install-box { border-radius: 28px; padding: 22px; background: #fff; border: 2px solid var(--ink); box-shadow: 0 18px 50px rgba(11, 42, 69, .1); }
+    .tabs { display: inline-flex; padding: 4px; gap: 4px; border-radius: 14px; background: var(--sky-1); }
+    .tab { padding: 8px 20px; border-radius: 10px; font-weight: 800; font-size: .95rem; color: var(--ink-2); min-height: 44px; }
+    .tab[aria-selected="true"] { color: var(--ink); background: #fff; box-shadow: 0 2px 8px rgba(11, 42, 69, .14); }
     .panel { margin-top: 18px; }
     .panel[hidden] { display: none; }
     .panel ol { list-style: none; counter-reset: p; display: grid; gap: 12px; }
     .panel li { counter-increment: p; display: flex; gap: 12px; align-items: flex-start; }
     .panel li::before {
       content: counter(p); flex: none; width: 30px; height: 30px; border-radius: 50%; margin-top: 2px;
-      display: grid; place-items: center; font-weight: 800; font-size: .9rem;
-      color: var(--gold-1); border: 1px solid var(--line); background: rgba(245,158,11,.1);
+      display: grid; place-items: center; font-weight: 900; font-size: .9rem; background: var(--canary); border: 1.5px solid var(--ink);
     }
-    .panel li div { flex: 1; }
+    .panel li div { flex: 1; font-weight: 600; }
     .kbd {
       display: inline-flex; align-items: center; gap: 6px; padding: 1px 10px; border-radius: 8px;
-      background: #000; border: 1px solid var(--line-soft); font-weight: 700; font-size: .92em; white-space: nowrap;
+      background: var(--sky-1); border: 1px solid var(--line); font-weight: 800; font-size: .92em; white-space: nowrap;
     }
     .kbd svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .install-box .cta-row { margin-top: 22px; }
 
-    /* أسئلة شائعة */
-    .faq { display: grid; gap: 10px; }
-    details { border-radius: 16px; background: rgba(24,24,27,.65); border: 1px solid var(--line-soft); }
+    /* ---------- الأسئلة ---------- */
+    .faq { display: grid; gap: 10px; max-width: 760px; }
+    details { border-radius: 16px; background: rgba(255, 255, 255, .82); border: 1px solid var(--line); }
     summary {
-      list-style: none; cursor: pointer; padding: 16px 18px; font-weight: 800;
+      list-style: none; cursor: pointer; padding: 14px 18px; font-weight: 800;
       display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 52px;
     }
     summary::-webkit-details-marker { display: none; }
-    summary::after { content: '+'; font-size: 1.4rem; color: var(--gold-2); font-weight: 700; line-height: 1; }
+    summary::after { content: '+'; font-size: 1.5rem; color: var(--salmon-2); font-weight: 800; line-height: 1; }
     details[open] summary::after { content: '–'; }
-    details p { padding: 0 18px 16px; color: var(--muted); }
+    details p { padding: 0 18px 16px; color: var(--ink-2); font-weight: 600; }
 
-    footer { padding: 28px 0 8px; text-align: center; color: var(--muted); font-size: .9rem; }
-    footer a { color: var(--gold-1); }
+    /* ---------- التذييل ---------- */
+    .foot { padding: 36px 0 28px; text-align: center; color: var(--ink-2); font-size: .9rem; font-weight: 600; }
+    .foot img { display: block; margin: 0 auto 14px; width: min(78%, 300px); height: auto; }
+    .foot a { font-weight: 800; }
 
     /* شريط التثبيت السفلي */
     .sticky-cta {
       position: fixed; inset-inline: 0; bottom: 0; z-index: 30;
       padding: 10px 16px calc(env(safe-area-inset-bottom) + 10px);
-      background: linear-gradient(to top, rgba(9,9,11,.97) 60%, rgba(9,9,11,0));
+      background: linear-gradient(to top, rgba(243, 250, 255, .97) 62%, rgba(243, 250, 255, 0));
       transform: translateY(110%); visibility: hidden; pointer-events: none;
       transition: transform .25s ease, visibility 0s linear .25s;
     }
@@ -247,17 +220,16 @@
 
     /* نافذة آيفون */
     dialog.sheet {
-      margin: auto auto 0; width: 100%; max-width: 480px; border: 1px solid var(--line); border-bottom: 0;
-      border-radius: 28px 28px 0 0; background: #111114; color: var(--text); padding: 22px 20px calc(env(safe-area-inset-bottom) + 22px);
+      margin: auto auto 0; width: 100%; max-width: 480px; border: 2px solid var(--ink); border-bottom: 0;
+      border-radius: 28px 28px 0 0; background: var(--sky-0); color: var(--ink); padding: 22px 20px calc(env(safe-area-inset-bottom) + 22px);
     }
-    dialog.sheet::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(3px); }
+    dialog.sheet::backdrop { background: rgba(11, 42, 69, .55); backdrop-filter: blur(3px); }
     dialog.sheet h3 { font-size: 1.2rem; font-weight: 900; margin-bottom: 14px; }
     dialog.sheet ol { list-style: none; counter-reset: q; display: grid; gap: 12px; }
-    dialog.sheet li { counter-increment: q; display: flex; gap: 12px; align-items: flex-start; }
+    dialog.sheet li { counter-increment: q; display: flex; gap: 12px; align-items: flex-start; font-weight: 600; }
     dialog.sheet li::before {
       content: counter(q); flex: none; width: 30px; height: 30px; border-radius: 50%;
-      display: grid; place-items: center; font-weight: 800; font-size: .9rem; color: #1c1003;
-      background: linear-gradient(135deg, var(--gold-1), var(--gold-2));
+      display: grid; place-items: center; font-weight: 900; font-size: .9rem; background: var(--canary); border: 1.5px solid var(--ink);
     }
     dialog.sheet .btn { width: 100%; margin-top: 18px; }
 
@@ -265,27 +237,34 @@
     .toast {
       position: fixed; z-index: 60; inset-inline: 0; margin: 0 auto; width: max-content; max-width: 90vw;
       bottom: calc(env(safe-area-inset-bottom) + 90px); padding: 12px 18px; border-radius: 16px;
-      background: #09090b; border: 2px solid var(--gold-2); color: var(--gold-1); font-weight: 800; font-size: .92rem;
+      background: var(--ink); color: #fff; font-weight: 800; font-size: .92rem;
       opacity: 0; transform: translateY(10px); transition: all .25s ease; pointer-events: none;
     }
     .toast.show { opacity: 1; transform: none; }
 
     /* شاشات أكبر */
-    @media (min-width: 640px) {
-      .grid.feat { grid-template-columns: repeat(2, 1fr); }
-    }
     @media (min-width: 900px) {
-      .hero { padding: 56px 0 64px; }
-      .hero .wrap { grid-template-columns: 1.1fr .9fr; gap: 56px; }
-      .grid.feat { grid-template-columns: repeat(3, 1fr); }
-      .steps { grid-template-columns: repeat(3, 1fr); }
-      .steps li { flex-direction: column; }
-      .install-box { padding: 34px; }
+      :root { --orbit: 440px; }
+      .hero { padding: 48px 0 72px; }
+      .hero .wrap { grid-template-columns: 1.05fr .95fr; gap: 56px; }
+      .sec { padding: 72px 0; }
+      .split { grid-template-columns: 1fr 1fr; gap: 56px; }
+      .split.demo-first .talk { position: sticky; top: 28px; }
+      .split.rev { align-items: center; }
+      .split.rev .talk, .split.rev .confcard { margin: 0 auto 0 0; }
+      .steps { grid-template-columns: repeat(3, 1fr); gap: 28px; }
+      .steps li { flex-direction: column; border-bottom: 0; padding: 0; }
+      .install-box { padding: 34px; max-width: 760px; }
       .sticky-cta { display: none; }
     }
+    @media (max-width: 899px) {
+      .split.demo-first .talk { order: -1; }
+    }
+    @media (max-height: 700px) and (max-width: 899px) { :root { --orbit: min(74vw, 290px); } }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
-      * { transition: none !important; animation: none !important; }
+      .ring, .chip { animation: none !important; }
+      * { transition: none !important; }
     }
   </style>
 </head>
@@ -294,10 +273,10 @@
   <header class="topbar">
     <div class="wrap">
       <a class="brand" href="./" aria-label="لاس LAS">
-        <div class="brand-mark"><span>LAS</span></div>
-        <b class="gold-text">منصة لاس</b>
+        <img src="icons/las-icon.svg" alt="" width="44" height="44" />
+        <div><b>LAS</b><i>Listen And Speak</i></div>
       </a>
-      <a class="try" href="app.html">جرّبه الآن</a>
+      <a class="open" href="app.html">افتح التطبيق</a>
     </div>
   </header>
 
@@ -306,109 +285,127 @@
     <div class="hero">
       <div class="wrap">
         <div>
-          <span class="eyebrow"><i></i>مترجم صوتي فوري · 14 لغة</span>
-          <h1>تحدّث بلغتك،<br /><span class="gold-text">ليسمعك العالم</span></h1>
-          <p class="lead">اضغط المايك وتحدّث بالعربية، فيترجم لاس كلامك في لحظتها وينطقه بصوت رجل أو امرأة، ويكتب لك النطق مقسّماً بالحروف العربية لتقوله بنفسك.</p>
+          <h1>تحدّث بالعربية،<br />واسمعها <span style="white-space:nowrap">بـ 14 لغة</span></h1>
+          <p class="lead">اضغط المايك وتحدّث، فتظهر الترجمة وتُنطق بصوت واضح، ومعها النطق مكتوباً بحروف عربية لتقوله بنفسك.</p>
 
           <div class="cta-row" id="heroCta">
-            <button class="btn btn-gold" id="installBtn" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>
+            <button class="btn btn-main" id="installBtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>
               <span id="installLabel">ثبّت التطبيق على موبايلك</span>
             </button>
             <a class="btn btn-ghost" href="app.html">جرّب من المتصفح</a>
           </div>
-
-          <ul class="chips" aria-label="مميزات سريعة">
-            <li>بدون متجر تطبيقات</li>
-            <li>أندرويد وآيفون</li>
-            <li>يفتح بدون إنترنت</li>
-          </ul>
+          <p class="assure">بدون متجر تطبيقات، ويعمل على أندرويد وآيفون.</p>
         </div>
 
-        <!-- شكل التطبيق (توضيحي) -->
-        <div class="device-col" aria-hidden="true">
-          <div class="phone">
-            <div class="screen">
-              <div class="screen-head">
-                <span class="t gold-text">منصة لاس</span>
-                <span class="live">متصل</span>
-              </div>
-              <div class="pair">🇪🇬 العربية ⇄ 🇺🇸 الإنجليزية</div>
-              <div class="box"><small>النص المراد ترجمته</small><div class="big">قهوة ساخنة</div></div>
-              <div class="box out"><small>الترجمة الفورية</small><div class="big">Hot coffee</div></div>
-              <div class="box"><small>🗣️ النطق المقسّم بالعربي</small>
-                <div class="pills"><span class="pill">هُوت</span><span class="pill">كُو-فِي</span></div>
-              </div>
-              <div class="mic">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
-                تحدّث بالمايكروفون
-              </div>
-            </div>
+        <div class="stage-col">
+          <div class="stage">
+            <div class="ring" id="ring" aria-hidden="true"></div>
+            <a class="mic" href="app.html" aria-label="افتح التطبيق وتحدّث">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>
+            </a>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- المميزات -->
-    <section id="features">
+    <!-- المزايا -->
+    <div class="sec" id="features">
       <div class="wrap">
         <div class="sec-head">
-          <h2>كل ما تحتاجه <span class="gold-text">وأنت مسافر</span></h2>
-          <p>أدوات بسيطة تعمل من شاشة واحدة.</p>
+          <h2>ترجمة تسمعها، ونطق تقرؤه</h2>
+          <p>كل شيء في شاشة واحدة: تتكلّم، فتظهر الترجمة وتنطق الكلمات بحروف تعرفها.</p>
         </div>
 
-        <div class="grid feat">
-          <article class="card">
-            <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg></div>
-            <h3>14 لغة عالمية</h3>
-            <p>العربية والإنجليزية والألمانية والفرنسية والهولندية والإيطالية والإسبانية والصينية والهندية والتركية والروسية واليابانية والكورية والبرتغالية.</p>
-          </article>
-          <article class="card">
-            <div class="ico"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
-            <h3>مايكروفون مستمر</h3>
-            <p>اضغط مرة واحدة وتحدّث بحرّية دون توقف، واضغط ثانية لتحصل على الترجمة منطوقة.</p>
-          </article>
-          <article class="card">
-            <div class="ico"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/></svg></div>
-            <h3>نطق مقسّم بالعربي</h3>
-            <p>تظهر الكلمات مقسّمة مع نطقها بحروف عربية لتردّدها بسهولة.</p>
-          </article>
-          <article class="card">
-            <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></div>
-            <h3>صوت رجل أو امرأة</h3>
-            <p>اختر الصوت الذي يناسبك، واسمع الترجمة بسرعة عادية أو ببطء لتتعلّمها.</p>
-          </article>
-          <article class="card">
-            <div class="ico"><svg viewBox="0 0 24 24"><path d="M2 8.8a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M3 3l18 18"/><circle cx="12" cy="19.5" r="1"/></svg></div>
-            <h3>يفتح بدون إنترنت</h3>
-            <p>بعد أول فتح يعمل التطبيق من هاتفك مباشرة. ونزّل حزم اللغات والمايك مرة واحدة لتترجم وتتعرّف على صوتك بدون اتصال.</p>
-          </article>
-          <article class="card">
-            <div class="ico"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg></div>
-            <h3>جمل جاهزة للسفر</h3>
-            <p>صيدلية، فندق، مقهى… ضغطة واحدة وتظهر الترجمة والنطق.</p>
-          </article>
+        <div class="split demo-first">
+          <ul class="feat">
+            <li>
+              <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg></div>
+              <div><h3>14 لغة</h3><p>العربية والإنجليزية والألمانية والفرنسية والهولندية والإيطالية والإسبانية والصينية والهندية والتركية والروسية واليابانية والكورية والبرتغالية.</p></div>
+            </li>
+            <li>
+              <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+              <div><h3>مايكروفون مستمر</h3><p>اضغط مرة وتحدّث بحرّية، واضغط ثانية لتسمع الترجمة.</p></div>
+            </li>
+            <li>
+              <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/></svg></div>
+              <div><h3>نطق بحروف عربية</h3><p>تظهر الكلمات مقسّمة مع نطقها بالعربي، فتردّدها بسهولة.</p></div>
+            </li>
+            <li>
+              <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></div>
+              <div><h3>صوت الترجمة</h3><p>صوت طبيعي من الإنترنت، أو صوت جهازك بدون اتصال (رجل أو امرأة). وتسمعها بسرعة عادية أو ببطء.</p></div>
+            </li>
+            <li>
+              <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+              <div><h3>اعرضها لمن أمامك</h3><p>زر «اعرضها» يملأ الشاشة بالترجمة بخط كبير ليقرأها الطرف الآخر.</p></div>
+            </li>
+            <li>
+              <div class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 8.8a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M3 3l18 18"/><circle cx="12" cy="19.5" r="1"/></svg></div>
+              <div><h3>يفتح بدون إنترنت</h3><p>بعد أول فتح يعمل التطبيق من هاتفك، وبتنزيل حزم اللغات تترجم بدون اتصال.</p></div>
+            </li>
+          </ul>
+
+          <div class="talk" role="img" aria-label="مثال: العبارة العربية «قهوة ساخنة» تُترجم إلى Hot coffee، ونطقها بالعربي «هُوت كُو-فِي»">
+            <div class="pairbar" aria-hidden="true">🇪🇬 العربية
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>
+              🇺🇸 الإنجليزية</div>
+            <div class="in" aria-hidden="true">قهوة ساخنة</div>
+            <div class="out" aria-hidden="true">
+              <div class="out-text">Hot coffee</div>
+              <div class="phon-label">النطق بحروف عربية</div>
+              <div class="phon"><span>هُوت</span><span>كُو-فِي</span></div>
+            </div>
+            <div class="acts" aria-hidden="true"><span class="act main">اسمع</span><span class="act">ببطء</span><span class="act">اعرضها</span></div>
+          </div>
         </div>
       </div>
-    </section>
+    </div>
+
+    <!-- وضع المؤتمرات -->
+    <div class="sec conf" id="conference">
+      <div class="wrap">
+        <div class="split rev">
+          <div>
+            <div class="sec-head" style="margin-bottom:0">
+              <h2>وضع المؤتمرات والمحاضرات</h2>
+              <p>ضع هاتفك قريباً من المتحدث، فتظهر الترجمة جملة بعد جملة بلغتك. اقرأها أو اسمعها، ثم احفظ النص كاملاً في ملف.</p>
+            </div>
+            <p class="conf-note">يحتاج اتصالاً بالإنترنت، ويعمل بأفضل صورة على Chrome في أندرويد.</p>
+          </div>
+
+          <div class="confcard" role="img" aria-label="مثال لوضع المؤتمرات: متحدث يتكلّم بالإنجليزية، وتظهر ترجمة كل جملة بالعربية تحت نصها الأصلي">
+            <div class="langs" aria-hidden="true">
+              <div><small>المتحدث يتكلّم</small><span>🇺🇸 الإنجليزية</span></div>
+              <div><small>أقرأ الترجمة بـ</small><span>🇪🇬 العربية</span></div>
+            </div>
+            <div class="log" aria-hidden="true">
+              <div class="line"><small>Our next speaker needs no introduction.</small><p>متحدثنا القادم لا يحتاج إلى تعريف.</p></div>
+              <div class="line"><small>Let's start with the numbers.</small><p>لنبدأ بالأرقام.</p></div>
+            </div>
+            <div class="live" aria-hidden="true">يستمع الآن…</div>
+            <div class="bar" aria-hidden="true"><span class="go">إيقاف الاستماع</span><span>اقرأها بصوت</span><span>حفظ النص</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- كيف يعمل -->
-    <section id="how">
+    <div class="sec" id="how">
       <div class="wrap">
-        <div class="sec-head"><h2>ثلاث خطوات <span class="gold-text">وتتكلم</span></h2></div>
+        <div class="sec-head"><h2>ثلاث خطوات وتتكلّم</h2></div>
         <ol class="steps">
-          <li><div><b>اختر لغة الترجمة</b><span>من شريط اللغات الـ 14 بضغطة واحدة.</span></div></li>
+          <li><div><b>اختر لغة الترجمة</b><span>من اللغات الـ 14 حول المايك بضغطة واحدة.</span></div></li>
           <li><div><b>اضغط المايك وتحدّث</b><span>أو اكتب النص إن كنت في مكان هادئ.</span></div></li>
-          <li><div><b>اسمع الترجمة وردّد النطق</b><span>بصوت رجل أو امرأة، بسرعة عادية أو بطيئة.</span></div></li>
+          <li><div><b>اسمع الترجمة وردّد النطق</b><span>بسرعة عادية أو ببطء، والنطق أمامك بالعربي.</span></div></li>
         </ol>
       </div>
-    </section>
+    </div>
 
     <!-- التثبيت -->
-    <section id="install">
+    <div class="sec" id="install">
       <div class="wrap">
         <div class="sec-head">
-          <h2>ثبّته على <span class="gold-text">شاشتك الرئيسية</span></h2>
+          <h2>ثبّته على شاشتك الرئيسية</h2>
           <p>بدون متجر وبدون تحميل ثقيل، يظهر لاس كأي تطبيق على هاتفك.</p>
         </div>
 
@@ -430,26 +427,26 @@
             <ol>
               <li><div>افتح هذه الصفحة في متصفح <b>Safari</b>.</div></li>
               <li><div>اضغط زر المشاركة
-                <span class="kbd"><svg viewBox="0 0 24 24"><path d="M12 15V3m0 0L8 7m4-4l4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg> مشاركة</span>
+                <span class="kbd"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4l4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg> مشاركة</span>
                 أسفل الشاشة.</div></li>
               <li><div>اختر <b>«إضافة إلى الشاشة الرئيسية»</b> ثم <b>«إضافة»</b>.</div></li>
             </ol>
           </div>
 
           <div class="cta-row">
-            <button class="btn btn-gold" id="installBtn2" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>
+            <button class="btn btn-main" id="installBtn2" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>
               <span class="installLabel">ثبّت التطبيق</span>
             </button>
           </div>
         </div>
       </div>
-    </section>
+    </div>
 
     <!-- أسئلة شائعة -->
-    <section id="faq">
+    <div class="sec" id="faq">
       <div class="wrap">
-        <div class="sec-head"><h2>أسئلة <span class="gold-text">شائعة</span></h2></div>
+        <div class="sec-head"><h2>أسئلة شائعة</h2></div>
         <div class="faq">
           <details>
             <summary>هل أحتاج لتحميله من المتجر؟</summary>
@@ -458,6 +455,10 @@
           <details>
             <summary>هل يعمل بدون إنترنت؟</summary>
             <p>يفتح التطبيق بدون إنترنت بعد أول فتح، والنطق بالعربي والجمل الجاهزة تعمل بدونه. للترجمة الحرّة والمايكروفون بدون إنترنت، نزّل الحزم من زر «الأوفلاين» داخل التطبيق (مرة واحدة على واي فاي، وتحتاج مساحة من عشرات إلى مئات الميجابايت). جودة ترجمة الجهاز أقل من جوجل، فيُستخدم جوجل تلقائياً عند توفر الإنترنت.</p>
+          </details>
+          <details>
+            <summary>ما وضع المؤتمرات؟</summary>
+            <p>يستمع للمتحدث باستمرار ويعرض ترجمة كل جملة بلغتك، ويمكنك سماعها أو حفظ النص في ملف. يحتاج اتصالاً بالإنترنت، ويعمل بأفضل صورة على Chrome في أندرويد.</p>
           </details>
           <details>
             <summary>ما المتصفح الأنسب؟</summary>
@@ -473,31 +474,33 @@
           </details>
         </div>
       </div>
-    </section>
+    </div>
   </main>
 
-  <footer>
+  <footer class="foot">
     <div class="wrap">
-      <p>© 2026 منصة لاس LAS · <a href="app.html">افتح التطبيق</a></p>
+      <img src="icons/las-logo-light.png" alt="LAS — Listen And Speak — لاس" width="300" height="127" />
+      <p>© 2026 منصة لاس LAS</p>
+      <p><a href="app.html">افتح التطبيق</a></p>
     </div>
   </footer>
 
   <!-- شريط تثبيت سفلي للموبايل -->
   <div class="sticky-cta" id="stickyCta">
-    <button class="btn btn-gold" id="installBtn3" type="button"><span class="installLabel">ثبّت التطبيق على موبايلك</span></button>
+    <button class="btn btn-main" id="installBtn3" type="button"><span class="installLabel">ثبّت التطبيق على موبايلك</span></button>
   </div>
 
   <!-- نافذة تعليمات آيفون -->
   <dialog class="sheet" id="iosSheet" aria-labelledby="iosTitle">
-    <h3 id="iosTitle" class="gold-text">التثبيت على الآيفون</h3>
+    <h3 id="iosTitle">التثبيت على الآيفون</h3>
     <ol>
       <li><div>افتح الصفحة في <b>Safari</b>.</div></li>
       <li><div>اضغط زر المشاركة
-        <span class="kbd"><svg viewBox="0 0 24 24"><path d="M12 15V3m0 0L8 7m4-4l4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg></span>
+        <span class="kbd"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4l4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg></span>
         أسفل الشاشة.</div></li>
       <li><div>اختر <b>«إضافة إلى الشاشة الرئيسية»</b> ثم <b>«إضافة»</b>.</div></li>
     </ol>
-    <button class="btn btn-gold" id="iosClose" type="button">تمام، فهمت</button>
+    <button class="btn btn-main" id="iosClose" type="button">تمام، فهمت</button>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -506,6 +509,12 @@
     (function () {
       var $ = function (s, r) { return (r || document).querySelector(s); };
       var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+
+      /* ----- المدار: علم لكل لغة من الـ 14 ----- */
+      var FLAGS = ['🇪🇬', '🇺🇸', '🇩🇪', '🇫🇷', '🇳🇱', '🇮🇹', '🇪🇸', '🇨🇳', '🇮🇳', '🇹🇷', '🇷🇺', '🇯🇵', '🇰🇷', '🇵🇹'];
+      $('#ring').innerHTML = FLAGS.map(function (f, i) {
+        return '<div class="slot" style="--a:' + (360 / FLAGS.length) * i + 'deg"><div class="unrot"><span class="chip">' + f + '</span></div></div>';
+      }).join('');
 
       var isStandalone = function () {
         return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
