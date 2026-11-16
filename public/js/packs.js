@@ -105,10 +105,43 @@ async function probe(url, headers) {
   } catch (e) { return ac.signal.aborted ? '✗ مهلة' : '✗'; }
   finally { clearTimeout(timer); }
 }
+const DIAG_FILES = ['config.json', 'generation_config.json', 'tokenizer.json', 'tokenizer_config.json', 'source.spm', 'vocab.json', 'onnx/encoder_model_quantized.onnx', 'onnx/decoder_model_merged_quantized.onnx'];
+// لكل ملف: م = الصفحة، و = محرك التنزيل. الرمزان: طلب عادي ثم طلب Range.
 export async function netDiag(model) {
-  const base = 'https://huggingface.co/' + model + '/resolve/main/', big = base + 'onnx/encoder_model_quantized.onnx';
-  const [a, b, c] = await Promise.all([probe(base + 'config.json'), probe(big, { Range: 'bytes=0-0' }), probe(big)]);
-  return `فحص الشبكة: الموقع ${a}، طلب الحجم ${b}، ملف النموذج ${c}`;
+  const base = 'https://huggingface.co/' + model + '/resolve/main/', urls = DIAG_FILES.map((f) => base + f);
+  const main = await Promise.all(urls.map(async (u) => [await probe(u), await probe(u, { Range: 'bytes=0-0' })]));
+  let wk = null;
+  try { wk = (await Promise.race([call({ op: 'probe', urls }), new Promise((_, rej) => setTimeout(() => rej(new Error('t')), 30000))])).rs; } catch (e) {}
+  return 'فحص الشبكة (م=الصفحة، و=المحرك؛ عادي ثم Range):<br>' + DIAG_FILES.map((f, i) => `${f.split('/').pop().replace('_quantized.onnx', '')}: م ${main[i].join(' ')} · و ${wk ? wk[urls[i]].join(' ') : '—'}`).join('<br>');
+}
+
+// ---------- تنزيل بديل من الصفحة نفسها ----------
+// إذا فشل المحرك (داخل الـ worker) في الاتصال، نجلب الملفات من الصفحة ونضعها في نفس الكاش الذي يقرأ منه المحرك، ثم نعيد المحاولة.
+const SKIP_EXT = /\.(md|bin|h5|msgpack|safetensors|ot|png|jpe?g|gif|gitattributes)$/i;
+const NEED_ONNX = /^onnx\/(encoder_model|decoder_model_merged)_quantized\.onnx$/;
+async function listFiles(model) {
+  try {
+    const r = await fetch('https://huggingface.co/api/models/' + model, { cache: 'no-store' });
+    if (r.ok) { const j = await r.json(); if (j && Array.isArray(j.siblings)) return j.siblings.map((x) => x.rfilename); }
+  } catch (e) {}
+  return DIAG_FILES.concat(['target.spm', 'special_tokens_map.json']);
+}
+export async function prefetchViaMain(model, onProgress) {
+  if (typeof caches === 'undefined') throw new Error('Cache Storage غير متاح');
+  const base = 'https://huggingface.co/' + model + '/resolve/main/', cache = await caches.open(CACHE_NAME);
+  const files = (await listFiles(model)).filter((f) => f.startsWith('onnx/') ? NEED_ONNX.test(f) : !SKIP_EXT.test(f) && !f.startsWith('.'));
+  const seen = new Map();
+  for (const f of files) {
+    const url = base + f;
+    if (await cache.match(url)) continue;
+    const r = await fetch(url, { cache: 'no-store' });
+    if (r.status === 404) continue;
+    if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + f);
+    const total = Number(r.headers.get('content-length')) || 0; seen.set(f, { loaded: 0, total });
+    const counter = new TransformStream({ transform(chunk, ctl) { seen.get(f).loaded += chunk.byteLength; onProgress && onProgress(seen); ctl.enqueue(chunk); } });
+    const h = new Headers(r.headers); h.delete('vary'); // Vary يمنع مطابقة الكاش لاحقاً
+    await cache.put(url, new Response(r.body.pipeThrough(counter), { status: 200, headers: h }));
+  }
 }
 
 // ---------- تنزيل وحذف ----------
@@ -119,20 +152,27 @@ export async function installModels(models, opts = {}) {
   try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
   if (todo.length) await prefetchRuntime();
   let cur = todo[0];
+  const isNet = (e) => /fetch|network|load failed|اتصال/i.test(String(e && e.message));
   try {
     for (let i = 0; i < todo.length; i++) {
       cur = todo[i];
       const files = new Map();
-      await call({ op: 'load', kind, model: todo[i] }, (m) => {
-        if (m.file) files.set(m.file, { loaded: m.loaded, total: m.total });
-        let l = 0, t = 0; files.forEach((f) => { l += f.loaded; t += f.total; });
-        opts.onProgress && opts.onProgress({ model: todo[i], index: i + 1, count: todo.length, loaded: l, total: t });
-      });
+      const report = () => { let l = 0, t = 0; files.forEach((f) => { l += f.loaded; t += f.total; }); opts.onProgress && opts.onProgress({ model: todo[i], index: i + 1, count: todo.length, loaded: l, total: t }); };
+      const load = () => call({ op: 'load', kind, model: todo[i] }, (m) => { if (m.file) files.set(m.file, { loaded: m.loaded, total: m.total }); report(); });
+      try { await load(); }
+      catch (e) {
+        if (!isNet(e)) throw e;
+        // المحرك فشل في الاتصال: نجرب الجلب من الصفحة ثم نعيد المحاولة مرة واحدة
+        e.firstError = e.message;
+        await prefetchViaMain(todo[i], (seen) => { files.clear(); seen.forEach((v, k) => files.set(k, v)); report(); });
+        files.clear();
+        await load();
+      }
       const bytes = await cacheBytes(todo[i]);
       const man = readManifest(); man[todo[i]] = { bytes, at: Date.now(), kind }; writeManifest(man);
     }
   } catch (e) {
-    if (/fetch|network|load failed|اتصال/i.test(String(e && e.message))) { try { e.message += ' — ' + await netDiag(cur); } catch (x) {} }
+    if (isNet(e)) { try { e.message += ' — ' + await netDiag(cur); } catch (x) {} }
     throw e;
   }
 }
