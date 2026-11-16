@@ -93,6 +93,24 @@ export async function prefetchRuntime() {
   try { await fetch(new URL('./ml-worker.js', import.meta.url).href); } catch (e) {}
 }
 
+// ---------- فحص الشبكة عند فشل التنزيل ----------
+// نجرّب ثلاثة طلبات حقيقية: صفحة صغيرة، وطلب الحجم (Range) كما يفعل المحرك، وملف النموذج نفسه. ونقطع الجسم بعد وصول الرؤوس فلا نحمّل شيئاً يُذكر.
+async function probe(url, headers) {
+  const ac = new AbortController(), timer = setTimeout(() => ac.abort(), 12000);
+  try {
+    const r = await fetch(url, { cache: 'no-store', signal: ac.signal, ...(headers ? { headers } : {}) });
+    const res = r.ok || r.status === 206 ? '✓' : r.status === 404 ? '؟' : '✗ ' + r.status;
+    try { ac.abort(); } catch (e) {}
+    return res;
+  } catch (e) { return ac.signal.aborted ? '✗ مهلة' : '✗'; }
+  finally { clearTimeout(timer); }
+}
+export async function netDiag(model) {
+  const base = 'https://huggingface.co/' + model + '/resolve/main/', big = base + 'onnx/encoder_model_quantized.onnx';
+  const [a, b, c] = await Promise.all([probe(base + 'config.json'), probe(big, { Range: 'bytes=0-0' }), probe(big)]);
+  return `فحص الشبكة: الموقع ${a}، طلب الحجم ${b}، ملف النموذج ${c}`;
+}
+
 // ---------- تنزيل وحذف ----------
 // opts: { kind='translation', onProgress({model,index,count,loaded,total}) }
 export async function installModels(models, opts = {}) {
@@ -100,15 +118,22 @@ export async function installModels(models, opts = {}) {
   const todo = models.filter((m) => !isInstalled(m));
   try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
   if (todo.length) await prefetchRuntime();
-  for (let i = 0; i < todo.length; i++) {
-    const files = new Map();
-    await call({ op: 'load', kind, model: todo[i] }, (m) => {
-      if (m.file) files.set(m.file, { loaded: m.loaded, total: m.total });
-      let l = 0, t = 0; files.forEach((f) => { l += f.loaded; t += f.total; });
-      opts.onProgress && opts.onProgress({ model: todo[i], index: i + 1, count: todo.length, loaded: l, total: t });
-    });
-    const bytes = await cacheBytes(todo[i]);
-    const man = readManifest(); man[todo[i]] = { bytes, at: Date.now(), kind }; writeManifest(man);
+  let cur = todo[0];
+  try {
+    for (let i = 0; i < todo.length; i++) {
+      cur = todo[i];
+      const files = new Map();
+      await call({ op: 'load', kind, model: todo[i] }, (m) => {
+        if (m.file) files.set(m.file, { loaded: m.loaded, total: m.total });
+        let l = 0, t = 0; files.forEach((f) => { l += f.loaded; t += f.total; });
+        opts.onProgress && opts.onProgress({ model: todo[i], index: i + 1, count: todo.length, loaded: l, total: t });
+      });
+      const bytes = await cacheBytes(todo[i]);
+      const man = readManifest(); man[todo[i]] = { bytes, at: Date.now(), kind }; writeManifest(man);
+    }
+  } catch (e) {
+    if (/fetch|network|load failed|اتصال/i.test(String(e && e.message))) { try { e.message += ' — ' + await netDiag(cur); } catch (x) {} }
+    throw e;
   }
 }
 export async function removeModels(models) {
