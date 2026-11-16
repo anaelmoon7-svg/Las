@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /vendor/
+Disallow: /dict/
+Disallow: /data/
+
+Sitemap: https://lasvoice.com/sitemap.xml
