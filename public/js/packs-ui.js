@@ -77,7 +77,7 @@ export function initPacks({ root, languages, translator }) {
   }
   const onProg = (key, label) => (e) => {
     const pct = e.total > 0 ? Math.min(100, Math.round((e.loaded / e.total) * 100)) : null;
-    progress[key] = `${label} ${e.index}/${e.count}` + (pct != null ? ` — ${pct}% (${fmt(e.loaded)} من ${fmt(e.total)})` : '');
+    progress[key] = `${label} ${e.index}/${e.count}` + (pct != null ? ` — ${pct}% (${fmt(e.loaded)} من ${fmt(e.total)})` : '') + (e.note ? ` — ${e.note}` : '');
     const el = root.querySelector(`[data-prog="${key}"]`);
     if (el) el.textContent = progress[key];
   };
