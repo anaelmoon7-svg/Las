@@ -55,11 +55,9 @@ export function initPacks({ root, languages, translator }) {
   }
 
   async function selfTest(id) {
-    let from = 'ar', to = id, text = SAMPLE.ar;
-    if (!P.canTranslateLocally('ar', id)) {
-      if (SAMPLE[id] && P.canTranslateLocally(id, 'ar')) { from = id; to = 'ar'; text = SAMPLE[id]; }
-      else return { ok: false, msg: 'لا يوجد مسار ترجمة جاهز على الجهاز لهذه اللغة بعد.' };
-    }
+    const path = P.testPath(id, !!SAMPLE[id]);
+    if (!path) return { ok: false, msg: 'لا يوجد مسار ترجمة جاهز على الجهاز لهذه اللغة بعد.' };
+    const [from, to] = path, text = from === 'ar' ? SAMPLE.ar : SAMPLE[id];
     const t0 = performance.now();
     const out = await P.localTranslate(text, from, to);
     const sec = ((performance.now() - t0) / 1000).toFixed(1);
@@ -71,7 +69,12 @@ export function initPacks({ root, languages, translator }) {
     if (busy.has(key)) return;
     busy.add(key); delete results[key]; progress[key] = 'جاري البدء…'; render();
     try { await fn(); }
-    catch (e) { results[key] = { ok: false, msg: '⚠️ تعذّر التنفيذ: ' + (e && e.message ? e.message : e) + ' — تأكد من الإنترنت وحاول مرة أخرى.' }; }
+    catch (e) {
+      const m = e && e.message ? e.message : String(e);
+      results[key] = { ok: false, msg: (e && e.noMemory) || /bad_alloc|OrtRun/i.test(m)
+        ? '⚠️ ذاكرة الجهاز لا تكفي لتشغيل هذه الحزمة الثقيلة. باقي اللغات تعمل بدونها (والأونلاين يغطي ما ينقص)، ويمكنك حذفها لتوفير المساحة.'
+        : '⚠️ تعذّر التنفيذ: ' + m + ' — تأكد من الإنترنت وحاول مرة أخرى.' };
+    }
     busy.delete(key); delete progress[key];
     await refreshStorage(); render();
   }

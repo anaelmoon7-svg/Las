@@ -278,13 +278,24 @@ export function plan(srcCode, tgtCode) {
   return null;
 }
 export const canTranslateLocally = (s, t) => !!plan(s, t);
+// اتجاه الاختبار: نفضّل مسار Opus الخفيف على NLLB الثقيل، فلا يفشل اختبار لغة جاهزة بسبب حزمة أخرى
+export function testPath(id, hasSample) {
+  const c = [['ar', id]]; if (hasSample) c.push([id, 'ar']);
+  return c.find(([s, t]) => { const p = plan(s, t); return p && p.kind === 'opus'; }) || c.find(([s, t]) => plan(s, t)) || null;
+}
 
 export async function localTranslate(text, srcCode, tgtCode) {
   const p = plan(srcCode, tgtCode);
   if (!p) return null;
   let cur = String(text);
   for (const st of p.steps) {
-    const r = await call({ op: 'translate', model: st.model, text: (st.prefix || '') + cur, opts: st.opts });
+    let r;
+    try { r = await call({ op: 'translate', model: st.model, text: (st.prefix || '') + cur, opts: st.opts }); }
+    catch (e) {
+      // نفاد الذاكرة: نحرّر الموديل الثقيل كي لا يعطّل بقية الموديلات
+      if (/bad_alloc|OrtRun|out of memory/i.test(String(e && e.message))) { try { await call({ op: 'dispose', model: st.model }); } catch (x) {} e.noMemory = true; }
+      throw e;
+    }
     cur = r.text;
   }
   return cur.trim() || null;
