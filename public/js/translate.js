@@ -1,4 +1,4 @@
-// محرك الترجمة: جوجل → MyMemory → (موديل محلي إن وُجد) → الجمل الجاهزة → خطأ صادق.
+// محرك الترجمة: خدمة لاس السحابية (/api/translate عبر Google Cloud الرسمي) → (موديل محلي إن وُجد) → الجمل الجاهزة → خطأ صادق.
 // لا يُرجع أبداً نصاً مزيفاً: إما ترجمة حقيقية أو يرمي NoTranslation.
 
 export class NoTranslation extends Error {
@@ -75,36 +75,24 @@ export function splitText(text, max = 450) {
 }
 
 // ---------- جلب مع مهلة ----------
-async function getJson(fetchImpl, url, ms) {
+async function getJson(fetchImpl, url, ms, init = {}) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), ms);
   try {
-    const res = await fetchImpl(url, { signal: ctl.signal });
+    const res = await fetchImpl(url, { ...init, signal: ctl.signal });
     if (!res.ok) { const e = new Error('http ' + res.status); e.status = res.status; throw e; }
     return await res.json();
   } finally { clearTimeout(timer); }
 }
 
 // ---------- المزوّدات ----------
-async function googleOnce(fetchImpl, text, sl, tl, ms) {
-  const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl='
-    + encodeURIComponent(sl) + '&tl=' + encodeURIComponent(tl) + '&q=' + encodeURIComponent(text);
-  const data = await getJson(fetchImpl, url, ms);
-  if (!Array.isArray(data) || !Array.isArray(data[0])) throw new Error('bad google payload');
-  const out = data[0].map((seg) => (seg && seg[0]) || '').join('').trim();
-  if (!out) throw new Error('empty google result');
+async function cloudOnce(fetchImpl, text, sl, tl, ms) {
+  const data = await getJson(fetchImpl, '/api/translate', ms, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, sl, tl }),
+  });
+  const out = data && typeof data.text === 'string' ? data.text.trim() : '';
+  if (!out) throw new Error('empty result');
   return out;
-}
-
-async function myMemoryOnce(fetchImpl, text, sl, tl, ms) {
-  const url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text)
-    + '&langpair=' + encodeURIComponent(sl + '|' + tl);
-  const data = await getJson(fetchImpl, url, ms);
-  const out = data && data.responseData && data.responseData.translatedText;
-  if (!out || /MYMEMORY WARNING|INVALID LANGUAGE/i.test(out) || (data.responseStatus && Number(data.responseStatus) !== 200)) {
-    throw new Error('mymemory refused');
-  }
-  return String(out).trim();
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -136,19 +124,15 @@ export function createTranslator(opts = {}) {
   const isOffline = opts.isOffline || (() => typeof navigator !== 'undefined' && navigator.onLine === false);
 
   async function translateChunk(text, sl, tl, reasons, fast) {
-    // 1) جوجل (محاولتان، ومحاولة واحدة وقصيرة إن كان الموديل المحلي جاهزاً)
+    // خدمة لاس السحابية (محاولتان، ومحاولة واحدة وقصيرة إن كان الموديل المحلي جاهزاً)
     for (let i = 0; i < (fast ? 1 : 2); i++) {
-      try { return { text: await googleOnce(fetchImpl, text, sl, tl, fast ? 3500 : timeout), via: 'google' }; }
+      try { return { text: await cloudOnce(fetchImpl, text, sl, tl, fast ? 3500 : timeout), via: 'cloud' }; }
       catch (e) {
-        reasons.push('google:' + (e.name === 'AbortError' ? 'timeout' : e.message));
-        if (e.status === 429 || e.status === 403 || e.status === 400) break;
+        reasons.push('cloud:' + (e.name === 'AbortError' ? 'timeout' : e.message));
+        if ([400, 403, 413, 429, 503].includes(e.status)) break;
         if (i === 0) await sleep(350);
       }
     }
-    // 2) MyMemory
-    if (fast) return null;
-    try { return { text: await myMemoryOnce(fetchImpl, text, sl, tl, timeout), via: 'mymemory' }; }
-    catch (e) { reasons.push('mymemory:' + (e.name === 'AbortError' ? 'timeout' : e.message)); }
     return null;
   }
 
@@ -186,7 +170,7 @@ export function createTranslator(opts = {}) {
       for (const c of chunks) {
         const r = await translateChunk(c, sl, tl, reasons, hasLocal);
         if (!r) { onlineOk = false; break; }
-        outs.push(r.text); via = via === 'mymemory' ? 'mymemory' : r.via;
+        outs.push(r.text); via = r.via;
       }
       if (onlineOk && outs.length) {
         const res = outs.join(' ');

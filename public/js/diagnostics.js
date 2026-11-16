@@ -31,15 +31,14 @@ export async function runDiagnostics(languages) {
   add(mw ? 'ok' : 'bad', 'Worker وحدات', mw ? 'مدعوم' : 'غير مدعوم: موديلات الجهاز لن تعمل');
   add('ok', 'سرعة الموديلات', self.crossOriginIsolated ? 'متعددة الخيوط' : 'خيط واحد (عادي على الاستضافة البسيطة)' + (navigator.deviceMemory ? ` · ذاكرة الجهاز ≈ ${navigator.deviceMemory} GB` : ''));
 
-  const [hf, gg, mm] = await Promise.all([
+  const [hf, svc] = await Promise.all([
     ping('https://huggingface.co/Xenova/opus-mt-en-ar/resolve/main/config.json'),
-    ping('https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ar&dt=t&q=hello'),
-    ping('https://api.mymemory.translated.net/get?q=hello&langpair=en|ar'),
+    ping('/api/health'),
   ]);
+  let svcCfg = null; if (svc.ok) { try { svcCfg = await (await fetch('/api/health', { cache: 'no-store' })).json(); } catch (e) {} }
   const net = (r) => (r.ok ? `يعمل (${r.ms} ms)` : `لا يعمل: ${r.err || 'HTTP ' + r.status}`);
   add(hf.ok ? 'ok' : 'warn', 'تنزيل الحزم (HuggingFace)', net(hf));
-  add(gg.ok ? 'ok' : 'warn', 'ترجمة جوجل', net(gg));
-  add(mm.ok ? 'ok' : 'warn', 'ترجمة MyMemory (احتياطي)', net(mm));
+  add(svc.ok && svcCfg && svcCfg.translate ? 'ok' : 'warn', 'خدمة الترجمة والنطق السحابية', svc.ok ? (svcCfg && svcCfg.translate ? `تعمل (${svc.ms} ms)` : 'الخدمة وصلت لكن المفتاح غير مضبوط في الخادم') : net(svc));
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   add(SR ? 'ok' : 'warn', 'التعرّف على الصوت بخدمة المتصفح', SR ? 'متاح (يحتاج إنترنت)' : 'غير متاح: استخدم حزمة المايك على الجهاز');

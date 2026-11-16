@@ -29,7 +29,7 @@ let lastOut = '', seq = 0, debounce = null, picking = 'from';
 
 const enginePromise = import('./translate.js').then((m) => ({ m, t: m.createTranslator() }));
 const phoneticPromise = import('./phonetics.js');
-const VIA = { google: 'ترجمة جوجل', mymemory: 'ترجمة MyMemory', cache: 'من الذاكرة', phrasebook: 'جملة جاهزة · بدون إنترنت', local: 'موديل على جهازك · بدون إنترنت', same: '' };
+const VIA = { cloud: 'ترجمة سحابية', cache: 'من الذاكرة', phrasebook: 'جملة جاهزة · بدون إنترنت', local: 'موديل على جهازك · بدون إنترنت', same: '' };
 
 function setStatus(msg, kind) { const s = $('status'); s.textContent = msg; s.className = 'status' + (kind ? ' ' + kind : ''); }
 
@@ -158,7 +158,7 @@ function speakNet(text, l, slow, done) {
   const next = () => {
     if (my !== speakSeq) return;
     if (i >= parts.length) { if (done) done(); return; }
-    const a = new Audio(`https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx&tl=${encodeURIComponent(l.ttsCode)}&ttsspeed=${slow ? 0.3 : 1}&q=${encodeURIComponent(parts[i])}`);
+    const a = new Audio(`/api/tts?lang=${encodeURIComponent(l.ttsCode)}&gender=${voiceGender === 'male' ? 'male' : 'female'}&slow=${slow ? 1 : 0}&text=${encodeURIComponent(parts[i])}`);
     netAudio = a; a.onended = () => { i++; next(); }; a.onerror = fail;
     a.play().catch(fail);
   };

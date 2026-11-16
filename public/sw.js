@@ -3,7 +3,7 @@
    - القواميس الكبيرة (الإنجليزي/الياباني) والمكتبات تُحفظ عند أول استخدام.
    - لا يتدخل في طلبات الترجمة والنطق ولا في تنزيل الموديلات (cross-origin). */
 
-const VERSION = 'las-v15';
+const VERSION = 'las-v16';
 const SHELL_CACHE = `${VERSION}-shell`;
 const BIG_CACHE = `${VERSION}-big`;
 
@@ -56,6 +56,7 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // الشبكة مباشرة
+  if (url.pathname.startsWith('/api/')) return; // الخدمة السحابية: دائماً من الشبكة، بلا كاش من الـSW
 
   // الصفحات: شبكة أولاً (4 ثوانٍ) ثم النسخة المحفوظة
   if (req.mode === 'navigate') {
