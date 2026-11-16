@@ -1,0 +1,20 @@
+{
+  "id": "./app.html",
+  "name": "منصة لاس — المترجم الصوتي الفوري",
+  "short_name": "لاس LAS",
+  "description": "مترجم صوتي فوري لـ 14 لغة مع نطق مقسّم بالعربي.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./app.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#DDF1FF",
+  "theme_color": "#DDF1FF",
+  "categories": ["utilities", "productivity", "travel"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

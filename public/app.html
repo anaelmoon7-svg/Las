@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>لاس — المترجم الصوتي الفوري</title>
+  <meta name="description" content="لاس: تكلّم بلغتك واسمع الترجمة فوراً بـ 14 لغة، مع النطق مكتوباً بالعربي." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="theme-color" content="#DDF1FF" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="لاس" />
+  <link rel="icon" href="icons/favicon-32.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="stylesheet" href="css/fonts.css" />
+  <link rel="stylesheet" href="css/tailwind.css" />
+  <style>
+    :root {
+      --sky-0: #F3FAFF; --sky-1: #DDF1FF; --sky-2: #B9E1FB; --sky-3: #5BB6EE; --sky-4: #1F7FC4;
+      --ink: #0B2A45; --ink-2: #49657F; --line: rgba(11, 42, 69, .14);
+      --salmon: #FF7A66; --salmon-2: #F25A45; --canary: #FFD84A; --canary-2: #FFF3BF;
+      --card: #FFFFFF; --ok: #0E8F6B; --warn: #B45309;
+      --orbit: min(88vw, 360px);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; }
+    html { overflow-x: clip; }
+    .wrap { overflow-x: clip; }
+    body {
+      font-family: 'Cairo', system-ui, -apple-system, sans-serif; color: var(--ink); min-height: 100dvh;
+      background:
+        radial-gradient(60vmax 60vmax at 105% -10%, rgba(255, 216, 74, .55), transparent 60%),
+        radial-gradient(50vmax 50vmax at -15% 55%, rgba(255, 122, 102, .16), transparent 62%),
+        linear-gradient(180deg, var(--sky-1) 0%, var(--sky-0) 55%, #fff 100%);
+      background-attachment: fixed;
+      padding: env(safe-area-inset-top) 16px calc(28px + env(safe-area-inset-bottom));
+    }
+    button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+    button:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid var(--sky-4); outline-offset: 2px; }
+    .wrap { max-width: 560px; margin: 0 auto; }
+
+    /* الرأس */
+    .top { display: flex; align-items: center; justify-content: space-between; padding: 14px 2px 4px; }
+    .brand { display: flex; align-items: baseline; gap: 8px; }
+    .brand b { font-weight: 900; font-size: 30px; line-height: 1; letter-spacing: -1px; }
+    .brand i { font-style: normal; font-weight: 800; font-size: 11px; letter-spacing: .34em; color: var(--sky-4); }
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .net { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--ink-2); }
+    .net::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+    .net.off::before { background: var(--salmon-2); }
+    .icon-btn { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: rgba(255, 255, 255, .7); border: 1px solid var(--line); }
+    .icon-btn svg { width: 22px; height: 22px; }
+
+    /* المدار */
+    .stage { position: relative; width: var(--orbit); height: var(--orbit); margin: 6px auto 0; }
+    .stage::before, .stage::after { content: ''; position: absolute; border-radius: 50%; inset: 23px; border: 1.5px dashed rgba(31, 127, 196, .38); pointer-events: none; }
+    .stage::after { inset: 25%; border: 1px solid rgba(31, 127, 196, .16); }
+    .ring { position: absolute; inset: 0; animation: spin 90s linear infinite; pointer-events: none; }
+    .chip { pointer-events: auto; }
+    .slot { position: absolute; top: 50%; left: 50%; width: 0; height: 0; transform: rotate(var(--a)) translateY(calc(var(--orbit) / -2 + 23px)); }
+    .unrot { position: absolute; transform: rotate(calc(var(--a) * -1)); }
+    .chip {
+      position: absolute; width: 46px; height: 46px; margin: -23px; border-radius: 50%; background: #fff; display: grid; place-items: center;
+      font-size: 24px; line-height: 1; box-shadow: 0 4px 14px rgba(11, 42, 69, .13); border: 2px solid #fff;
+      animation: spin-rev 90s linear infinite; transition: scale .25s, background .25s, border-color .25s;
+    }
+    .chip[aria-pressed="true"] { background: var(--canary); border-color: var(--ink); scale: 1.22; z-index: 2; box-shadow: 0 8px 22px rgba(255, 190, 20, .55); }
+    .stage.hold .ring, .stage.hold .chip { animation-play-state: paused; }
+    @keyframes spin { to { rotate: 360deg; } }
+    @keyframes spin-rev { to { rotate: -360deg; } }
+
+    /* المايك */
+    .mic {
+      position: absolute; inset: 0; margin: auto; width: 44%; height: 44%; border-radius: 50%; display: grid; place-items: center; color: #fff; z-index: 3;
+      background: radial-gradient(circle at 32% 26%, #FFA797, var(--salmon) 48%, var(--salmon-2));
+      box-shadow: 0 0 0 10px rgba(255, 122, 102, .16), 0 0 0 22px rgba(255, 122, 102, .08), 0 18px 40px rgba(242, 90, 69, .42);
+      transition: scale .18s;
+    }
+    .mic:active { scale: .95; }
+    .mic svg { width: 42%; height: 42%; }
+    .mic .stop { display: none; width: 30%; height: 30%; border-radius: 9px; background: #fff; }
+    .mic.rec { background: radial-gradient(circle at 32% 26%, #3C6C93, var(--ink)); animation: pulse 1.5s ease-out infinite; }
+    .mic.rec svg { display: none; } .mic.rec .stop { display: block; }
+    .mic.busy { opacity: .6; pointer-events: none; }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(255, 122, 102, .55), 0 0 0 0 rgba(255, 122, 102, .3), 0 18px 40px rgba(11, 42, 69, .35); }
+      100% { box-shadow: 0 0 0 26px rgba(255, 122, 102, 0), 0 0 0 52px rgba(255, 122, 102, 0), 0 18px 40px rgba(11, 42, 69, .35); }
+    }
+
+    /* شريط اللغتين */
+    .pair { display: grid; grid-template-columns: 1fr 48px 1fr; align-items: center; gap: 8px; margin-top: 14px; }
+    .side { text-align: start; background: rgba(255, 255, 255, .78); border: 1px solid var(--line); border-radius: 18px; padding: 8px 12px; min-height: 58px; }
+    .side small { display: block; font-size: 10px; font-weight: 800; letter-spacing: .12em; color: var(--sky-4); }
+    .side span { display: block; font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .side.to { background: var(--canary-2); border-color: rgba(11, 42, 69, .28); }
+    .swap { width: 48px; height: 48px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; }
+    .swap svg { width: 22px; height: 22px; }
+    .status { min-height: 22px; margin: 12px 4px 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--ink-2); }
+    .status.rec { color: var(--salmon-2); } .status.ok { color: var(--ok); } .status.err { color: var(--warn); }
+    .other { display: flex; margin: 10px auto 0; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 999px; background: #fff; border: 1.5px solid var(--ink); font-weight: 800; font-size: 13px; min-height: 44px; }
+    .other svg { width: 18px; height: 18px; }
+
+    /* بطاقة الحوار */
+    .talk { margin-top: 18px; background: var(--card); border-radius: 26px; box-shadow: 0 16px 44px rgba(11, 42, 69, .1); overflow: hidden; border: 1px solid rgba(11, 42, 69, .06); }
+    .talk textarea { display: block; width: 100%; border: 0; resize: none; padding: 16px 18px 10px; font: inherit; font-size: 17px; font-weight: 600; color: var(--ink); background: transparent; min-height: 72px; }
+    .talk textarea::placeholder { color: #8EA5B8; font-weight: 500; }
+    .talk textarea:focus { outline: none; }
+    .out { border-top: 1px dashed var(--line); padding: 14px 18px 16px; background: linear-gradient(180deg, #fff, var(--sky-0)); }
+    .out-text { font-size: 24px; font-weight: 800; line-height: 1.45; min-height: 36px; overflow-wrap: anywhere; }
+    .out-text.muted { font-size: 15px; font-weight: 600; color: #8EA5B8; }
+    .out-text.err { font-size: 14px; font-weight: 700; color: var(--warn); }
+    .via { font-size: 11px; font-weight: 700; color: var(--ink-2); margin-top: 4px; min-height: 16px; }
+    .phon { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; direction: rtl; }
+    .phon span { background: var(--canary-2); border-bottom: 3px solid var(--canary); border-radius: 10px 10px 4px 4px; padding: 2px 9px; font-size: 16px; font-weight: 700; }
+    .phon-label { margin-top: 14px; font-size: 10px; font-weight: 800; letter-spacing: .12em; color: var(--sky-4); }
+    .acts { display: flex; gap: 8px; padding: 12px 14px 14px; background: var(--sky-0); border-top: 1px solid rgba(11, 42, 69, .06); }
+    .act { flex: 1; min-height: 46px; border-radius: 14px; background: #fff; border: 1px solid var(--line); font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .act svg { width: 18px; height: 18px; flex: none; }
+    .act.main { background: var(--ink); color: #fff; border-color: var(--ink); flex: 1.5; }
+    .foot { margin: 22px 0 0; text-align: center; font-size: 11px; color: var(--ink-2); }
+
+    /* اللوحات */
+    .scrim { position: fixed; inset: 0; background: rgba(11, 42, 69, .45); backdrop-filter: blur(3px); z-index: 20; display: none; align-items: flex-end; justify-content: center; }
+    .scrim.open { display: flex; }
+    .sheet { width: 100%; max-width: 560px; max-height: 92dvh; overflow-y: auto; background: var(--sky-0); border-radius: 28px 28px 0 0; padding: 10px 16px calc(24px + env(safe-area-inset-bottom)); animation: rise .28s ease-out; }
+    @keyframes rise { from { translate: 0 40px; opacity: 0; } }
+    .sheet-head { position: sticky; top: -10px; background: var(--sky-0); display: flex; align-items: center; justify-content: space-between; padding: 12px 2px; z-index: 1; }
+    .sheet-head h2 { margin: 0; font-size: 20px; font-weight: 900; }
+    .sec { background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 14px; margin-bottom: 12px; }
+    .sec h3 { margin: 0 0 4px; font-size: 14px; font-weight: 900; }
+    .sec p { margin: 0 0 10px; font-size: 12px; color: var(--ink-2); line-height: 1.7; }
+    .seg { display: flex; background: var(--sky-1); border-radius: 14px; padding: 4px; gap: 4px; }
+    .seg button { flex: 1; min-height: 40px; border-radius: 11px; font-size: 13px; font-weight: 800; color: var(--ink-2); }
+    .seg button[aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 2px 8px rgba(11, 42, 69, .12); }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 700; min-height: 44px; }
+    .row input { width: 22px; height: 22px; accent-color: var(--salmon-2); }
+    .wide { width: 100%; min-height: 46px; border-radius: 14px; background: var(--ink); color: #fff; font-weight: 800; font-size: 13px; }
+    .wide.ghost { background: #fff; color: var(--ink); border: 1.5px solid var(--ink); }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .lang-btn { display: flex; align-items: center; gap: 10px; text-align: start; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; min-height: 56px; }
+    .lang-btn[aria-pressed="true"] { background: var(--canary-2); border-color: var(--ink); }
+    .lang-btn em { font-style: normal; font-size: 24px; }
+    .lang-btn b { display: block; font-size: 14px; font-weight: 800; } .lang-btn small { font-size: 11px; color: var(--ink-2); }
+    .show { position: fixed; inset: 0; z-index: 30; background: var(--ink); color: #fff; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 28px; text-align: center; }
+    .show.open { display: flex; }
+    .show p { font-size: clamp(30px, 9vw, 64px); font-weight: 800; line-height: 1.35; margin: 0; overflow-wrap: anywhere; }
+    .show small { margin-top: 26px; font-size: 13px; opacity: .7; }
+
+    /* وضع المؤتمرات */
+    .conf-open { display: flex; margin: 10px auto 0; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 999px; background: var(--ink); color: #fff; font-weight: 800; font-size: 13px; min-height: 44px; }
+    .conf { position: fixed; inset: 0; z-index: 25; background: var(--sky-0); display: none; flex-direction: column; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+    .conf.open { display: flex; }
+    .conf-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--line); background: #fff; }
+    .conf-head h2 { margin: 0; font-size: 18px; font-weight: 900; }
+    .conf-langs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 16px; }
+    .conf-langs label { font-size: 10px; font-weight: 800; color: var(--sky-4); display: block; }
+    .conf-langs select { width: 100%; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: #fff; font: inherit; font-weight: 700; font-size: 14px; padding: 0 8px; color: var(--ink); }
+    .conf-log { flex: 1; overflow-y: auto; padding: 8px 16px 16px; }
+    .conf-line { padding: 12px 0; border-bottom: 1px dashed var(--line); }
+    .conf-line small { display: block; font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
+    .conf-line p { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.55; overflow-wrap: anywhere; }
+    .conf-line p.err { font-size: 13px; color: var(--warn); }
+    .conf-live { padding: 8px 16px; min-height: 40px; font-size: 14px; color: var(--ink-2); background: var(--canary-2); border-top: 1px solid var(--line); }
+    .conf-empty { text-align: center; color: var(--ink-2); font-size: 14px; padding: 40px 20px; line-height: 1.9; }
+    .conf-bar { display: flex; gap: 8px; padding: 10px 16px; background: #fff; border-top: 1px solid var(--line); align-items: center; }
+    .conf-go { flex: 1.6; min-height: 52px; border-radius: 16px; background: var(--salmon-2); color: #fff; font-weight: 900; font-size: 15px; }
+    .conf-go.on { background: var(--ink); }
+    .conf-bar .act { min-height: 52px; }
+    .conf-bar .act[aria-pressed="true"] { background: var(--canary); border-color: var(--ink); }
+
+    /* تلوين واجهة الحزم داخل اللوحة الفاتحة */
+    .sheet .bg-zinc-900 { background: #fff !important; } .sheet .bg-zinc-800 { background: var(--sky-1) !important; }
+    .sheet .border-zinc-800, .sheet .border-zinc-700 { border-color: var(--line) !important; }
+    .sheet .text-zinc-100, .sheet .text-zinc-200, .sheet .text-zinc-950 { color: var(--ink) !important; }
+    .sheet .text-zinc-300, .sheet .text-zinc-400, .sheet .text-zinc-500 { color: var(--ink-2) !important; }
+    .sheet .text-amber-300 { color: var(--warn) !important; } .sheet .text-emerald-300 { color: var(--ok) !important; } .sheet .text-red-300 { color: #B42318 !important; }
+    .sheet .bg-amber-500 { background: var(--canary) !important; } .sheet [class*="border-amber-500"] { border-color: #EBCB57 !important; } .sheet [class*="border-red-500"] { border-color: #F3B4AC !important; }
+
+    @media (max-height: 700px) { :root { --orbit: min(74vw, 290px); } }
+    @media (prefers-reduced-motion: reduce) { .ring, .chip, .mic.rec, .sheet { animation: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand"><b>لاس</b><i>LAS</i></div>
+      <div class="top-actions">
+        <span id="net" class="net">متصل</span>
+        <button class="icon-btn" id="open-settings" aria-label="الإعدادات والعمل بدون إنترنت">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <div class="stage" id="stage">
+        <div class="ring" id="ring"></div>
+        <button class="mic" id="mic" aria-label="ابدأ الكلام">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></svg>
+          <span class="stop"></span>
+        </button>
+      </div>
+
+      <div class="pair">
+        <button class="side" id="from-btn"><small>أتكلّم</small><span id="from-name"></span></button>
+        <button class="swap" id="swap" aria-label="بدّل اللغتين"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></button>
+        <button class="side to" id="to-btn"><small>الترجمة إلى</small><span id="to-name"></span></button>
+      </div>
+
+      <p class="status" id="status" aria-live="polite">اضغط المايك وتكلّم، واضغط مرة ثانية لتسمع الترجمة.</p>
+      <button class="other" id="other">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 18v-5a8 8 0 0 1 16 0v5"/><rect x="2.5" y="13.5" width="5" height="7" rx="2"/><rect x="16.5" y="13.5" width="5" height="7" rx="2"/></svg>
+        <span id="other-label"></span>
+      </button>
+
+      <button class="conf-open" id="conf-open">وضع المؤتمرات والمحاضرات</button>
+
+      <section class="talk" id="talk">
+        <textarea id="input" rows="2" placeholder="أو اكتب هنا ما تريد ترجمته…" aria-label="النص المراد ترجمته"></textarea>
+        <div class="out">
+          <div class="out-text muted" id="out" dir="auto">الترجمة تظهر هنا.</div>
+          <div class="via" id="via"></div>
+          <div id="phon-wrap" hidden><div class="phon-label">النطق بحروف عربية</div><div class="phon" id="phon"></div></div>
+        </div>
+        <div class="acts">
+          <button class="act main" id="play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>اسمع</button>
+          <button class="act" id="slow">ببطء</button>
+          <button class="act" id="showbig">اعرضها</button>
+          <button class="act" id="copy">انسخ</button>
+        </div>
+      </section>
+      <p class="foot">لاس · مترجم صوتي بـ 14 لغة · <a href="index.html" style="color:inherit">عن التطبيق</a></p>
+    </main>
+  </div>
+
+  <!-- اختيار اللغة -->
+  <div class="scrim" id="pick-scrim"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pick-title">
+    <div class="sheet-head"><h2 id="pick-title">اختر اللغة</h2><button class="icon-btn" data-close aria-label="إغلاق">✕</button></div>
+    <div class="grid" id="pick-grid"></div>
+  </div></div>
+
+  <!-- الإعدادات -->
+  <div class="scrim" id="set-scrim"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="set-title">
+    <div class="sheet-head"><h2 id="set-title">الإعدادات</h2><button class="icon-btn" data-close aria-label="إغلاق">✕</button></div>
+    <div class="sec">
+      <h3>صوت الترجمة</h3>
+      <p>«طبيعي» صوت بشري أوضح من الإنترنت (صوت واحد لكل لغة). «صوت الجهاز» يعمل بدون إنترنت، وجودته ونوعه (رجل أو امرأة) حسب الأصوات المثبتة في هاتفك.</p>
+      <div class="seg" id="voicemode" style="margin-bottom:8px"><button data-v="natural">طبيعي (أونلاين)</button><button data-v="device">صوت الجهاز</button></div>
+      <div class="seg" id="gender"><button data-g="female">صوت امرأة</button><button data-g="male">صوت رجل</button></div>
+      <label class="row" style="margin-top:8px">انطق الترجمة تلقائياً بعد الكلام <input type="checkbox" id="autospeak" /></label>
+    </div>
+    <div class="sec">
+      <h3>التعرّف على الصوت</h3>
+      <p>«تلقائي» يستخدم خدمة المتصفح، وينتقل للجهاز عند انقطاع الإنترنت إن كانت حزمة المايك منزّلة.</p>
+      <div class="seg" id="micmode"><button data-m="auto">تلقائي</button><button data-m="device">على الجهاز دائماً</button></div>
+    </div>
+    <div class="sec">
+      <h3>النطق بالعربي بدون إنترنت</h3>
+      <p>يحمّل قواميس النطق (الإنجليزي والصيني والياباني) مرة واحدة لتعمل بدون اتصال.</p>
+      <button class="wide ghost" id="prep">تجهيز النطق للأوفلاين</button>
+      <p id="prep-status" style="margin:8px 0 0"></p>
+    </div>
+    <div id="packs-root" class="space-y-3" style="margin-bottom:12px"></div>
+    <div class="sec">
+      <h3>فحص الجاهزية</h3>
+      <p>يختبر جهازك فعلياً: الأوفلاين، الموديلات، الإنترنت، المايك، الأصوات.</p>
+      <button class="wide" id="diag">ابدأ الفحص</button>
+      <div id="diag-root" class="space-y-1" style="margin-top:10px"></div>
+    </div>
+  </div></div>
+
+  <!-- وضع المؤتمرات -->
+  <div class="conf" id="conf" role="dialog" aria-modal="true" aria-labelledby="conf-title">
+    <div class="conf-head"><h2 id="conf-title">وضع المؤتمرات</h2><button class="icon-btn" id="conf-close" aria-label="إغلاق">✕</button></div>
+    <div class="conf-langs">
+      <div><label for="conf-spk">المتحدث يتكلّم</label><select id="conf-spk"></select></div>
+      <div><label for="conf-mine">أقرأ الترجمة بـ</label><select id="conf-mine"></select></div>
+    </div>
+    <div class="conf-log" id="conf-log"><div class="conf-empty" id="conf-empty">ضع الهاتف قريباً من المتحدث واضغط «ابدأ الاستماع».<br>الترجمة تظهر هنا جملة بعد جملة. يحتاج هذا الوضع اتصالاً بالإنترنت.</div></div>
+    <div class="conf-live" id="conf-live" aria-live="off"></div>
+    <div class="conf-bar">
+      <button class="conf-go" id="conf-go">ابدأ الاستماع</button>
+      <button class="act" id="conf-voice" aria-pressed="false">اقرأها بصوت</button>
+      <button class="act" id="conf-save">حفظ النص</button>
+    </div>
+  </div>
+
+  <div class="show" id="show"><p id="show-text" dir="auto"></p><small>اضغط في أي مكان للإغلاق</small></div>
+
+  <script>
+    const LANGUAGES_14 = [
+      { code: 'ar',    apiCode: 'ar',    ttsCode: 'ar',    recCode: 'ar-EG', flag: '🇪🇬', nameAr: 'العربية',               native: 'العربية' },
+      { code: 'en-US', apiCode: 'en',    ttsCode: 'en-US', recCode: 'en-US', flag: '🇺🇸', nameAr: 'الإنجليزية (أمريكا)',   native: 'English (US)' },
+      { code: 'en-GB', apiCode: 'en',    ttsCode: 'en-GB', recCode: 'en-GB', flag: '🇬🇧', nameAr: 'الإنجليزية (بريطانيا)', native: 'English (UK)' },
+      { code: 'de',    apiCode: 'de',    ttsCode: 'de',    recCode: 'de-DE', flag: '🇩🇪', nameAr: 'الألمانية',             native: 'Deutsch' },
+      { code: 'fr',    apiCode: 'fr',    ttsCode: 'fr',    recCode: 'fr-FR', flag: '🇫🇷', nameAr: 'الفرنسية',              native: 'Français' },
+      { code: 'nl',    apiCode: 'nl',    ttsCode: 'nl',    recCode: 'nl-NL', flag: '🇳🇱', nameAr: 'الهولندية',             native: 'Nederlands' },
+      { code: 'it',    apiCode: 'it',    ttsCode: 'it',    recCode: 'it-IT', flag: '🇮🇹', nameAr: 'الإيطالية',             native: 'Italiano' },
+      { code: 'es',    apiCode: 'es',    ttsCode: 'es',    recCode: 'es-ES', flag: '🇪🇸', nameAr: 'الإسبانية',             native: 'Español' },
+      { code: 'zh-CN', apiCode: 'zh-CN', ttsCode: 'zh-CN', recCode: 'zh-CN', flag: '🇨🇳', nameAr: 'الصينية',               native: '中文' },
+      { code: 'hi',    apiCode: 'hi',    ttsCode: 'hi',    recCode: 'hi-IN', flag: '🇮🇳', nameAr: 'الهندية',               native: 'हिन्दी' },
+      { code: 'tr',    apiCode: 'tr',    ttsCode: 'tr',    recCode: 'tr-TR', flag: '🇹🇷', nameAr: 'التركية',               native: 'Türkçe' },
+      { code: 'ru',    apiCode: 'ru',    ttsCode: 'ru',    recCode: 'ru-RU', flag: '🇷🇺', nameAr: 'الروسية',               native: 'Русский' },
+      { code: 'ja',    apiCode: 'ja',    ttsCode: 'ja',    recCode: 'ja-JP', flag: '🇯🇵', nameAr: 'اليابانية',             native: '日本語' },
+      { code: 'ko',    apiCode: 'ko',    ttsCode: 'ko',    recCode: 'ko-KR', flag: '🇰🇷', nameAr: 'الكورية',               native: '한국어' },
+      { code: 'pt',    apiCode: 'pt',    ttsCode: 'pt',    recCode: 'pt-PT', flag: '🇵🇹', nameAr: 'البرتغالية',            native: 'Português' },
+    ];
+    const $ = (id) => document.getElementById(id);
+    const store = { get(k, d) { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+    const meta = (c) => LANGUAGES_14.find((l) => l.code === c) || LANGUAGES_14[0];
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+    let src = store.get('las_src', 'ar'), tgt = store.get('las_tgt', 'en-US');
+    if (!LANGUAGES_14.some((l) => l.code === src)) src = 'ar';
+    if (!LANGUAGES_14.some((l) => l.code === tgt) || tgt === src) tgt = src === 'en-US' ? 'ar' : 'en-US';
+    let voiceGender = store.get('las_gender', 'female'), autoSpeak = store.get('las_autospeak', '1') === '1';
+    let lastOut = '', seq = 0, debounce = null, picking = 'from';
+
+    const enginePromise = import('./js/translate.js').then((m) => ({ m, t: m.createTranslator() }));
+    const phoneticPromise = import('./js/phonetics.js');
+    const VIA = { google: 'ترجمة جوجل', mymemory: 'ترجمة MyMemory', cache: 'من الذاكرة', phrasebook: 'جملة جاهزة · بدون إنترنت', local: 'موديل على جهازك · بدون إنترنت', same: '' };
+
+    function setStatus(msg, kind) { const s = $('status'); s.textContent = msg; s.className = 'status' + (kind ? ' ' + kind : ''); }
+
+    // ---------- اللغات والمدار ----------
+    function renderPair() {
+      const a = meta(src), b = meta(tgt);
+      $('from-name').textContent = `${a.flag} ${a.nameAr}`;
+      $('to-name').textContent = `${b.flag} ${b.native}`;
+      $('other-label').textContent = `الطرف الآخر يتكلّم: \u2068${b.native}\u2069`;
+      $('input').dir = src === 'ar' ? 'rtl' : 'ltr';
+      store.set('las_src', src); store.set('las_tgt', tgt);
+      const others = LANGUAGES_14.filter((l) => l.code !== src);
+      $('ring').innerHTML = others.map((l, i) => `<div class="slot" style="--a:${(360 / others.length) * i}deg"><div class="unrot"><button class="chip" data-code="${l.code}" aria-pressed="${l.code === tgt}" aria-label="ترجم إلى ${l.nameAr}" title="${l.nameAr}">${l.flag}</button></div></div>`).join('');
+    }
+    function setTarget(code) { if (code === src) return; tgt = code; renderPair(); setStatus(`الترجمة إلى ${meta(tgt).nameAr}`); translateNow(); }
+    function swapLangs() { [src, tgt] = [tgt, src]; if (lastOut) { $('input').value = lastOut; } renderPair(); translateNow(); }
+    let holdTimer = null;
+    function holdOrbit(ms) { $('stage').classList.add('hold'); clearTimeout(holdTimer); if (ms) holdTimer = setTimeout(() => { if (!micBusy()) $('stage').classList.remove('hold'); }, ms); }
+    $('ring').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (b) { setTarget(b.dataset.code); holdOrbit(3500); } });
+    $('stage').addEventListener('pointerdown', () => holdOrbit(3500));
+    $('swap').onclick = swapLangs;
+
+    function openPicker(which) {
+      picking = which; $('pick-title').textContent = which === 'from' ? 'أتكلّم بأي لغة؟' : 'الترجمة إلى أي لغة؟';
+      const cur = which === 'from' ? src : tgt;
+      $('pick-grid').innerHTML = LANGUAGES_14.map((l) => `<button class="lang-btn" data-code="${l.code}" aria-pressed="${l.code === cur}"><em>${l.flag}</em><span><b>${l.native}</b><small>${l.nameAr}</small></span></button>`).join('');
+      $('pick-scrim').classList.add('open');
+    }
+    $('from-btn').onclick = () => openPicker('from'); $('to-btn').onclick = () => openPicker('to');
+    $('pick-grid').addEventListener('click', (e) => {
+      const b = e.target.closest('.lang-btn'); if (!b) return; const c = b.dataset.code;
+      if (picking === 'from') { if (c === tgt) tgt = src; src = c; } else { if (c === src) src = tgt; tgt = c; }
+      $('pick-scrim').classList.remove('open'); renderPair(); translateNow();
+    });
+    document.querySelectorAll('.scrim').forEach((s) => s.addEventListener('click', (e) => { if (e.target === s || e.target.closest('[data-close]')) s.classList.remove('open'); }));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { document.querySelectorAll('.scrim.open').forEach((s) => s.classList.remove('open')); $('show').classList.remove('open'); } });
+
+    // ---------- الترجمة والنطق المكتوب ----------
+    async function renderPhonetic(text, code) {
+      try {
+        const { phonetic } = await phoneticPromise;
+        const pills = code === 'ar' ? [] : await phonetic(text, code);
+        $('phon-wrap').hidden = !pills.length;
+        $('phon').innerHTML = pills.map((p) => `<span>${esc(p.ar)}</span>`).join('');
+      } catch (e) { $('phon-wrap').hidden = true; }
+    }
+    function translateSoon() { clearTimeout(debounce); debounce = setTimeout(translateNow, 450); }
+    async function translateNow() {
+      clearTimeout(debounce);
+      const text = $('input').value.trim(), out = $('out'), my = ++seq;
+      if (!text) { lastOut = ''; out.textContent = 'الترجمة تظهر هنا.'; out.className = 'out-text muted'; $('via').textContent = ''; $('phon-wrap').hidden = true; return ''; }
+      if (!lastOut) { out.textContent = '… جاري الترجمة'; out.className = 'out-text muted'; }
+      try {
+        const { t } = await enginePromise;
+        const res = await t.translate(text, src, tgt);
+        if (my !== seq) return lastOut;
+        lastOut = res.text; out.textContent = res.text; out.className = 'out-text'; out.dir = tgt === 'ar' ? 'rtl' : 'ltr';
+        $('via').textContent = VIA[res.via] || '';
+        renderPhonetic(res.text, tgt);
+        return res.text;
+      } catch (e) {
+        if (my !== seq) return lastOut;
+        lastOut = ''; out.className = 'out-text err'; $('via').textContent = ''; $('phon-wrap').hidden = true;
+        out.textContent = navigator.onLine === false
+          ? 'لا يوجد إنترنت، ولا توجد حزمة ترجمة منزّلة لهاتين اللغتين. نزّل الحزمة من الإعدادات لتترجم بدون اتصال.'
+          : 'تعذّرت الترجمة الآن (الخدمة لم تردّ). حاول بعد قليل، أو نزّل حزمة اللغة من الإعدادات.';
+        return '';
+      }
+    }
+    $('input').addEventListener('input', translateSoon);
+
+    // ---------- نطق الترجمة ----------
+    const MALE = /\b(male|man|david|mark|daniel|george|james|guy|thomas|diego|jorge|luca|maged|tarik|naayf|hamed|shakir|hans|stefan|pavel|yuri|ichiro|otoya|rishi|hemant|cem|xander)\b/i;
+    const FEMALE = /\b(female|woman|zira|samantha|susan|karen|moira|tessa|victoria|laila|salma|hoda|zariyah|mariam|amelie|anna|helena|sabina|paulina|monica|alice|federica|ellen|kyoko|yuna|lekha|kalpana|yelda|milena|irina|luciana|joana|ting|mei)\b/i;
+    const GOOD = /natural|neural|enhanced|premium|online|google|siri|wavenet/i, BAD = /espeak|compact|eloquence|pico/i;
+    function pickVoice(l, male) {
+      const all = (window.speechSynthesis ? speechSynthesis.getVoices() : []);
+      const base = l.ttsCode.split('-')[0].toLowerCase();
+      const pool = all.filter((v) => v.lang.toLowerCase().startsWith(base));
+      const score = (v) => (GOOD.test(v.name) ? 4 : 0) - (BAD.test(v.name) ? 6 : 0)
+        + ((male ? MALE : FEMALE).test(v.name) ? 3 : 0) - ((male ? FEMALE : MALE).test(v.name) ? 3 : 0)
+        + (v.lang.replace('_', '-').toLowerCase() === l.recCode.toLowerCase() ? 1 : 0);
+      return pool.sort((x, y) => score(y) - score(x))[0] || null;
+    }
+    function speakDevice(text, l, slow) {
+      if (!('speechSynthesis' in window)) { setStatus('جهازك لا يدعم نطق النص.', 'err'); return; }
+      try {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text), v = pickVoice(l, voiceGender === 'male');
+        u.lang = l.recCode; if (v) u.voice = v;
+        u.pitch = 1; u.rate = slow ? 0.75 : 1; // بدون تغيير النبرة: هو ما كان يجعل الصوت آلياً
+        speechSynthesis.speak(u);
+      } catch (e) { setStatus('تعذّر تشغيل الصوت.', 'err'); }
+    }
+    // صوت طبيعي من الإنترنت (خدمة جوجل غير الرسمية): يُقسَّم النص ويُشغَّل بالتتابع، وعند أي فشل نرجع لصوت الجهاز.
+    let netAudio = null, speakSeq = 0;
+    function chunkText(t) {
+      const out = []; let cur = '';
+      for (const w of t.split(/\s+/)) { if ((cur + ' ' + w).length > 170 && cur) { out.push(cur); cur = w; } else cur = cur ? cur + ' ' + w : w; }
+      if (cur) out.push(cur);
+      return out.flatMap((c) => c.length > 180 ? c.match(/.{1,180}/gu) : [c]);
+    }
+    function speakNet(text, l, slow) {
+      const parts = chunkText(text), my = ++speakSeq; let i = 0;
+      let failed = false;
+      const fail = () => { if (failed || my !== speakSeq) return; failed = true; speakDevice(parts.slice(i).join(' '), l, slow); };
+      const next = () => {
+        if (my !== speakSeq || i >= parts.length) return;
+        const a = new Audio(`https://translate.googleapis.com/translate_tts?ie=UTF-8&client=gtx&tl=${encodeURIComponent(l.ttsCode)}&ttsspeed=${slow ? 0.3 : 1}&q=${encodeURIComponent(parts[i])}`);
+        netAudio = a; a.onended = () => { i++; next(); }; a.onerror = fail;
+        a.play().catch(fail);
+      };
+      next();
+    }
+    function stopSpeaking() { speakSeq++; try { netAudio && netAudio.pause(); } catch (e) {} try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
+    function speak(text, code, slow) {
+      if (!text) return;
+      stopSpeaking();
+      const l = meta(code), mode = store.get('las_voice_mode', 'natural');
+      if (mode === 'natural' && navigator.onLine !== false) speakNet(text, l, slow); else speakDevice(text, l, slow);
+    }
+    if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => {};
+    $('play').onclick = () => speak(lastOut, tgt, false);
+    $('slow').onclick = () => speak(lastOut, tgt, true);
+    $('copy').onclick = async () => { if (!lastOut) return; try { await navigator.clipboard.writeText(lastOut); setStatus('تم نسخ الترجمة.', 'ok'); } catch (e) { setStatus('تعذّر النسخ.', 'err'); } };
+    $('showbig').onclick = () => { if (!lastOut) return; $('show-text').textContent = lastOut; $('show').classList.add('open'); };
+    $('show').onclick = () => $('show').classList.remove('open');
+
+    // ---------- المايكروفون ----------
+    let micState = 'idle', rec = null, finalText = '', offlineRec = null, offlineTimer = null;
+    const micBusy = () => micState !== 'idle';
+    const getMicMode = () => store.get('las_mic_mode', 'auto');
+    function micUI(state) {
+      micState = state; const m = $('mic');
+      m.classList.toggle('rec', state === 'online' || state === 'device'); m.classList.toggle('busy', state === 'working');
+      m.setAttribute('aria-label', state === 'idle' ? 'ابدأ الكلام' : 'أوقف واسمع الترجمة');
+      $('stage').classList.toggle('hold', state !== 'idle');
+    }
+    async function finishSpeech() {
+      const out = await translateNow();
+      if (out) { setStatus('تمت الترجمة.', 'ok'); if (autoSpeak) setTimeout(() => speak(out, tgt, false), 150); $('talk').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+    }
+    function startOnline() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      finalText = ''; $('input').value = ''; lastOut = '';
+      try {
+        rec = new SR(); rec.lang = meta(src).recCode; rec.continuous = true; rec.interimResults = true;
+        rec.onresult = (e) => {
+          let interim = '';
+          for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) finalText += r[0].transcript + ' '; else interim += r[0].transcript; }
+          $('input').value = (finalText + interim).trim(); translateSoon();
+        };
+        rec.onend = () => { if (micState === 'online') { try { rec.start(); } catch (e) {} } };
+        rec.onerror = (ev) => {
+          const er = ev && ev.error;
+          if (er === 'no-speech' || er === 'aborted') return;
+          micUI('idle');
+          if (er === 'network' || er === 'service-not-allowed' || er === 'language-not-supported') fallbackToDevice();
+          else if (er === 'not-allowed') setStatus('لم يُسمح باستخدام المايكروفون. فعّل الإذن من إعدادات المتصفح.', 'err');
+          else setStatus('توقف المايكروفون. اضغط للمحاولة مرة أخرى.', 'err');
+        };
+        rec.start(); micUI('online'); setStatus(`يسمعك الآن (${meta(src).nameAr})… اضغط للإيقاف.`, 'rec');
+      } catch (e) { micUI('idle'); setStatus('تعذّر تشغيل المايكروفون: ' + e.message, 'err'); }
+    }
+    async function stopOnline() { micUI('working'); try { rec && rec.stop(); } catch (e) {} await new Promise((r) => setTimeout(r, 350)); micUI('idle'); await finishSpeech(); }
+    async function startDevice() {
+      let P, M;
+      try { [P, M] = await Promise.all([import('./js/packs.js'), import('./js/offline-mic.js')]); }
+      catch (e) { setStatus('تعذّر تحميل وحدة التعرّف على الصوت: ' + e.message, 'err'); return; }
+      if (!P.installedWhisper()) { setStatus('المايك بدون إنترنت يحتاج حزمة تعرّف على الصوت. نزّلها من الإعدادات.', 'err'); return; }
+      try { offlineRec = M.createRecorder(); await offlineRec.start(); }
+      catch (e) { offlineRec = null; setStatus('تعذّر فتح المايكروفون: ' + (e && e.name === 'NotAllowedError' ? 'لم يُسمح بالإذن' : (e && e.message) || e), 'err'); return; }
+      $('input').value = ''; lastOut = '';
+      micUI('device'); setStatus('يسجّل على جهازك بدون إنترنت… اضغط للإيقاف.', 'rec');
+      offlineTimer = setTimeout(() => { if (micState === 'device') stopDevice(); }, 120000);
+    }
+    async function stopDevice() {
+      const r0 = offlineRec; offlineRec = null; clearTimeout(offlineTimer); micUI('working');
+      setStatus('جاري التعرّف على الصوت على جهازك… (أول مرة أبطأ)');
+      try {
+        const r = await r0.stop();
+        if (r.seconds < 0.4 || r.peak < 0.01) { setStatus('لم يُسمع صوت واضح. قرّب الجهاز وحاول مرة أخرى.', 'err'); return; }
+        const P = await import('./js/packs.js');
+        const text = await P.transcribe(r.audio, meta(src).recCode);
+        if (!text) { setStatus('لم يُلتقط كلام مفهوم. حاول بصوت أوضح.', 'err'); return; }
+        $('input').value = text; micUI('idle'); await finishSpeech();
+      } catch (e) { setStatus('فشل التعرّف على الصوت على الجهاز: ' + ((e && e.message) || e), 'err'); }
+      finally { micUI('idle'); }
+    }
+    async function fallbackToDevice() {
+      const P = await import('./js/packs.js');
+      if (P.installedWhisper()) startDevice();
+      else setStatus('خدمة التعرّف على الصوت تحتاج إنترنت. نزّل حزمة المايك من الإعدادات لتعمل بدونه.', 'err');
+    }
+    function toggleMic(reverse) {
+      if (micState === 'working') return;
+      if (micState === 'online') return stopOnline();
+      if (micState === 'device') return stopDevice();
+      if (reverse) { [src, tgt] = [tgt, src]; renderPair(); }
+      stopSpeaking();
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (getMicMode() === 'device' || !SR || navigator.onLine === false) startDevice(); else startOnline();
+    }
+    $('mic').onclick = () => toggleMic(false);
+    $('other').onclick = () => toggleMic(true);
+
+    // ---------- وضع المؤتمرات ----------
+    let confRec = null, confOn = false, confVoice = false, confLock = null; const confLines = [];
+    function confSetup() {
+      const opts = LANGUAGES_14.map((l) => `<option value="${l.code}">${l.flag} ${l.nameAr}</option>`).join('');
+      $('conf-spk').innerHTML = opts; $('conf-mine').innerHTML = opts; $('conf-spk').value = tgt; $('conf-mine').value = src;
+    }
+    async function confAdd(text) {
+      const spk = $('conf-spk').value, mine = $('conf-mine').value, log = $('conf-log');
+      $('conf-empty').hidden = true;
+      const d = document.createElement('div'); d.className = 'conf-line';
+      d.innerHTML = `<small dir="auto">${esc(text)}</small><p dir="auto">…</p>`; log.appendChild(d); log.scrollTop = log.scrollHeight;
+      const row = { src: text, out: '' }; confLines.push(row);
+      try {
+        const { t } = await enginePromise; const res = await t.translate(text, spk, mine);
+        row.out = res.text; d.lastChild.textContent = res.text;
+        if (confVoice && confOn) speak(res.text, mine, false);
+      } catch (e) { d.lastChild.textContent = 'تعذّرت ترجمة هذه الجملة.'; d.lastChild.className = 'err'; }
+      log.scrollTop = log.scrollHeight;
+    }
+    function confPaint() { $('conf-go').textContent = confOn ? 'إيقاف الاستماع' : 'ابدأ الاستماع'; $('conf-go').classList.toggle('on', confOn); $('conf-spk').disabled = $('conf-mine').disabled = confOn; }
+    async function confStart() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) { $('conf-live').textContent = 'متصفحك لا يدعم الاستماع المستمر. استخدم Chrome على أندرويد.'; return; }
+      if (navigator.onLine === false) { $('conf-live').textContent = 'وضع المؤتمرات يحتاج اتصالاً بالإنترنت.'; return; }
+      if ($('conf-spk').value === $('conf-mine').value) { $('conf-live').textContent = 'اختر لغتين مختلفتين.'; return; }
+      try {
+        confRec = new SR(); confRec.lang = meta($('conf-spk').value).recCode; confRec.continuous = true; confRec.interimResults = true;
+        confRec.onresult = (e) => {
+          let interim = '';
+          for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) { const tx = r[0].transcript.trim(); if (tx) confAdd(tx); } else interim += r[0].transcript; }
+          $('conf-live').textContent = interim;
+        };
+        confRec.onend = () => { if (confOn) { try { confRec.start(); } catch (e) {} } };
+        confRec.onerror = (ev) => {
+          const er = ev && ev.error; if (er === 'no-speech' || er === 'aborted') return;
+          confOn = false; confPaint();
+          $('conf-live').textContent = er === 'not-allowed' ? 'لم يُسمح باستخدام المايكروفون.' : er === 'network' ? 'انقطع الاتصال بخدمة التعرّف على الصوت.' : 'توقف الاستماع. اضغط للمتابعة.';
+        };
+        confRec.start(); confOn = true; confPaint(); $('conf-live').textContent = 'يستمع الآن…';
+        try { confLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+      } catch (e) { $('conf-live').textContent = 'تعذّر تشغيل المايكروفون: ' + e.message; }
+    }
+    function confStop() { confOn = false; try { confRec && confRec.stop(); } catch (e) {} try { confLock && confLock.release(); } catch (e) {} confLock = null; stopSpeaking(); confPaint(); $('conf-live').textContent = ''; }
+    $('conf-open').onclick = () => { if (micBusy()) return; confSetup(); $('conf').classList.add('open'); };
+    $('conf-close').onclick = () => { confStop(); $('conf').classList.remove('open'); };
+    $('conf-go').onclick = () => (confOn ? confStop() : confStart());
+    $('conf-voice').onclick = (e) => { confVoice = !confVoice; e.currentTarget.setAttribute('aria-pressed', confVoice); if (!confVoice) stopSpeaking(); };
+    $('conf-save').onclick = () => {
+      if (!confLines.length) { $('conf-live').textContent = 'لا يوجد نص للحفظ بعد.'; return; }
+      const txt = confLines.map((r) => r.src + '\n' + r.out).join('\n\n');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain;charset=utf-8' })); a.download = 'las-transcript.txt'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    };
+
+    // ---------- الإعدادات ----------
+    let packsApiPromise = null;
+    function getPacksApi() {
+      if (!packsApiPromise) packsApiPromise = Promise.all([import('./js/packs-ui.js'), enginePromise]).then(([ui, eng]) => ui.initPacks({ root: $('packs-root'), languages: LANGUAGES_14, translator: eng.t }));
+      return packsApiPromise;
+    }
+    function paintSettings() {
+      document.querySelectorAll('#gender button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.g === voiceGender));
+      document.querySelectorAll('#voicemode button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === store.get('las_voice_mode', 'natural')));
+      document.querySelectorAll('#gender button').forEach((b) => { b.disabled = store.get('las_voice_mode', 'natural') === 'natural'; b.style.opacity = b.disabled ? .45 : 1; });
+      document.querySelectorAll('#micmode button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === getMicMode()));
+      $('autospeak').checked = autoSpeak;
+      if (store.get('las_speechdata_ready', '')) { $('prep').textContent = 'تم التجهيز ✓ (اضغط للتحديث)'; }
+    }
+    $('open-settings').onclick = () => { paintSettings(); $('set-scrim').classList.add('open'); getPacksApi().then((a) => a.render()).catch((e) => { $('packs-root').textContent = 'تعذّر تحميل مدير الحزم: ' + e.message; }); };
+    $('gender').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; voiceGender = b.dataset.g; store.set('las_gender', voiceGender); paintSettings(); speak(voiceGender === 'male' ? 'تم اختيار صوت الرجل' : 'تم اختيار صوت المرأة', 'ar', false); });
+    $('voicemode').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; store.set('las_voice_mode', b.dataset.v); paintSettings(); speak('هذا هو الصوت المختار', 'ar', false); });
+    $('micmode').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; store.set('las_mic_mode', b.dataset.m); paintSettings(); });
+    $('autospeak').onchange = (e) => { autoSpeak = e.target.checked; store.set('las_autospeak', autoSpeak ? '1' : '0'); };
+    $('prep').onclick = async () => {
+      const btn = $('prep'), st = $('prep-status'); btn.disabled = true;
+      const steps = [['en', 'القاموس الإنجليزي'], ['zh', 'الصيني'], ['ja', 'الياباني (الأكبر، قد يستغرق دقيقة)']];
+      try {
+        const { preloadPhonetics } = await phoneticPromise;
+        for (let i = 0; i < steps.length; i++) { st.textContent = `(${i + 1}/${steps.length}) جاري تحميل ${steps[i][1]}…`; await preloadPhonetics(steps[i][0]); }
+        store.set('las_speechdata_ready', String(Date.now())); st.textContent = 'تم. النطق جاهز للعمل بدون إنترنت.'; btn.textContent = 'تم التجهيز ✓';
+      } catch (e) { st.textContent = 'تعذّر التحميل (تأكد من الإنترنت) وحاول مرة أخرى.'; }
+      btn.disabled = false;
+    };
+    $('diag').onclick = () => import('./js/diagnostics.js').then((m) => m.renderDiagnostics($('diag-root'), LANGUAGES_14)).catch((e) => { $('diag-root').textContent = e.message; });
+
+    // ---------- الشبكة والتشغيل ----------
+    function paintNet() { const on = navigator.onLine !== false; $('net').textContent = on ? 'متصل' : 'بدون إنترنت'; $('net').classList.toggle('off', !on); }
+    window.addEventListener('online', paintNet); window.addEventListener('offline', paintNet);
+    renderPair(); paintNet();
+    setTimeout(() => getPacksApi().catch(() => {}), 1200);
+    if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  </script>
+</body>
+</html>

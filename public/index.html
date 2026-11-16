@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>لاس LAS — المترجم الصوتي الفوري بـ 14 لغة</title>
+  <meta name="description" content="لاس: مترجم صوتي فوري لـ 14 لغة مع نطق مقسّم بالعربي. ثبّته على موبايلك من المتصفح بدون متجر تطبيقات." />
+  <meta property="og:title" content="لاس LAS — المترجم الصوتي الفوري" />
+  <meta property="og:description" content="تحدّث بلغتك واسمع الترجمة بصوت رجل أو امرأة، مع نطق مقسّم بالحروف العربية." />
+  <meta property="og:type" content="website" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#09090b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title" content="لاس" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+
+  <link rel="stylesheet" href="css/fonts.css" />
+
+  <style>
+    :root {
+      --bg: #09090b;
+      --bg-soft: #18181b;
+      --line: rgba(245, 158, 11, 0.28);
+      --line-soft: rgba(255, 255, 255, 0.08);
+      --text: #f8fafc;
+      --muted: #a1a1aa;
+      --gold-1: #fde68a;
+      --gold-2: #f59e0b;
+      --gold-3: #d97706;
+      --burgundy: #800020;
+      --ok: #34d399;
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+
+    body {
+      font-family: 'Cairo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at 50% -10%, #1e1b4b 0%, #09090b 52%, #000 100%) fixed;
+      color: var(--text);
+      line-height: 1.7;
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding-bottom: calc(env(safe-area-inset-bottom) + 24px);
+    }
+
+    a { color: inherit; }
+    button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+    :focus-visible { outline: 3px solid var(--gold-2); outline-offset: 3px; border-radius: 10px; }
+
+    .wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+
+    .gold-text {
+      background: linear-gradient(135deg, var(--gold-1) 0%, var(--gold-2) 50%, var(--gold-3) 100%);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent; color: transparent;
+    }
+
+    /* ---------- الشريط العلوي ---------- */
+    .topbar { padding: calc(env(safe-area-inset-top) + 14px) 0 6px; }
+    .topbar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .brand-mark {
+      width: 44px; height: 44px; border-radius: 50%; padding: 2px;
+      background: linear-gradient(135deg, var(--burgundy), #3f0d1a 45%, var(--gold-2));
+      display: grid; place-items: center;
+    }
+    .brand-mark span {
+      width: 100%; height: 100%; border-radius: 50%; background: var(--bg);
+      display: grid; place-items: center;
+      font-weight: 900; font-size: 14px; letter-spacing: 1px; color: var(--gold-2);
+      direction: ltr;
+    }
+    .brand b { font-size: 18px; font-weight: 800; }
+    .topbar a.try {
+      font-size: 14px; font-weight: 700; text-decoration: none; color: var(--gold-1);
+      padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line);
+    }
+
+    /* ---------- الهيرو ---------- */
+    .hero { padding: 28px 0 40px; }
+    .hero .wrap { display: grid; gap: 36px; align-items: center; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 700;
+      color: var(--gold-1); background: rgba(245, 158, 11, 0.12); border: 1px solid var(--line);
+    }
+    .eyebrow i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); display: block; }
+    h1 {
+      margin-top: 16px; font-weight: 900; line-height: 1.25;
+      font-size: clamp(2rem, 8.2vw, 3.4rem);
+    }
+    .lead { margin-top: 14px; color: #d4d4d8; font-size: clamp(1rem, 3.9vw, 1.15rem); max-width: 34em; }
+
+    .cta-row { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 12px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      min-height: 54px; padding: 0 24px; border-radius: 16px; font-weight: 800; font-size: 1.05rem;
+      text-decoration: none; transition: transform .15s ease, filter .15s ease;
+    }
+    .btn:active { transform: scale(.98); }
+    .cta-row .btn { flex: 1 1 240px; }
+    .btn-gold {
+      color: #1c1003;
+      background: linear-gradient(135deg, var(--gold-1), var(--gold-2) 55%, var(--gold-3));
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.28);
+    }
+    .btn-gold:hover { filter: brightness(1.06); }
+    .btn-ghost { color: var(--gold-1); border: 1px solid var(--line); background: rgba(24, 24, 27, 0.6); }
+    .btn svg { width: 22px; height: 22px; flex: none; }
+
+    .chips { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .chips li {
+      list-style: none; font-size: 13px; font-weight: 600; color: #d4d4d8;
+      padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line-soft); background: rgba(255,255,255,.03);
+    }
+
+    /* ---------- مجسّم الموبايل ---------- */
+    .device-col { display: grid; place-items: center; }
+    .phone {
+      width: min(300px, 100%); border-radius: 38px; padding: 12px;
+      background: linear-gradient(160deg, #27272a, #0b0b0d);
+      border: 1px solid var(--line);
+      box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 0 0 6px rgba(245,158,11,.05), 0 0 80px rgba(128,0,32,.35);
+    }
+    .screen { border-radius: 28px; background: #0c0c0f; padding: 14px; display: grid; gap: 10px; }
+    .screen-head { display: flex; align-items: center; justify-content: space-between; }
+    .screen-head .t { font-weight: 800; font-size: 14px; }
+    .screen-head .live {
+      font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      color: #6ee7b7; background: #052e22; border: 1px solid rgba(52,211,153,.4);
+    }
+    .pair {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 12px; font-weight: 700; color: var(--gold-1);
+      padding: 6px; border-radius: 12px; background: var(--bg-soft); border: 1px solid var(--line-soft);
+    }
+    .box { border-radius: 16px; padding: 12px; background: #000; border: 1px solid var(--line-soft); }
+    .box small { display: block; font-size: 11px; font-weight: 700; color: var(--gold-2); margin-bottom: 4px; }
+    .box.out { border: 1.5px solid rgba(245,158,11,.45); }
+    .box.out small { color: var(--ok); }
+    .box .big { font-size: 20px; font-weight: 800; line-height: 1.4; }
+    .box.out .big { color: #fbbf24; direction: ltr; text-align: left; }
+    .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+    .pill {
+      padding: 4px 12px; border-radius: 12px; font-weight: 800; font-size: 15px; color: var(--gold-1);
+      background: rgba(245,158,11,.15); border: 1px solid rgba(245,158,11,.45);
+    }
+    .mic {
+      margin-top: 2px; display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 12px; border-radius: 16px; font-weight: 800; font-size: 13px;
+      background: linear-gradient(90deg, var(--burgundy), #9f1239 55%, #b45309);
+      border: 1px solid rgba(252,211,77,.35);
+    }
+    .mic svg { width: 18px; height: 18px; }
+
+    /* ---------- الأقسام ---------- */
+    section { padding: 44px 0; }
+    .sec-head { max-width: 36em; margin-bottom: 26px; }
+    .sec-head h2 { font-size: clamp(1.5rem, 6vw, 2.2rem); font-weight: 900; line-height: 1.3; }
+    .sec-head p { margin-top: 8px; color: var(--muted); }
+
+    .grid { display: grid; gap: 14px; }
+    .card {
+      border-radius: var(--radius); padding: 20px;
+      background: rgba(24, 24, 27, 0.78); border: 1px solid var(--line-soft);
+      backdrop-filter: blur(10px);
+    }
+    .card .ico {
+      width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; margin-bottom: 12px;
+      color: var(--gold-1); background: rgba(245,158,11,.12); border: 1px solid var(--line);
+    }
+    .card .ico svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .card h3 { font-size: 1.1rem; font-weight: 800; }
+    .card p { margin-top: 4px; color: var(--muted); font-size: .95rem; }
+
+    /* خطوات الاستخدام */
+    .steps { counter-reset: s; display: grid; gap: 12px; list-style: none; }
+    .steps li {
+      counter-increment: s; display: flex; gap: 14px; align-items: flex-start;
+      padding: 16px; border-radius: 18px; background: rgba(24,24,27,.6); border: 1px solid var(--line-soft);
+    }
+    .steps li::before {
+      content: counter(s); flex: none; width: 36px; height: 36px; border-radius: 50%;
+      display: grid; place-items: center; font-weight: 900; color: #1c1003;
+      background: linear-gradient(135deg, var(--gold-1), var(--gold-2));
+    }
+    .steps b { display: block; font-weight: 800; }
+    .steps span { color: var(--muted); font-size: .95rem; }
+
+    /* قسم التثبيت */
+    .install-box {
+      border-radius: 28px; padding: 22px; border: 1.5px solid var(--line);
+      background: linear-gradient(160deg, rgba(128,0,32,.22), rgba(24,24,27,.85) 40%);
+    }
+    .tabs { display: inline-flex; padding: 4px; gap: 4px; border-radius: 14px; background: #000; border: 1px solid var(--line-soft); }
+    .tab { padding: 8px 18px; border-radius: 10px; font-weight: 800; font-size: .95rem; color: var(--muted); min-height: 44px; }
+    .tab[aria-selected="true"] { color: #1c1003; background: linear-gradient(135deg, var(--gold-1), var(--gold-2)); }
+    .panel { margin-top: 18px; }
+    .panel[hidden] { display: none; }
+    .panel ol { list-style: none; counter-reset: p; display: grid; gap: 12px; }
+    .panel li { counter-increment: p; display: flex; gap: 12px; align-items: flex-start; }
+    .panel li::before {
+      content: counter(p); flex: none; width: 30px; height: 30px; border-radius: 50%; margin-top: 2px;
+      display: grid; place-items: center; font-weight: 800; font-size: .9rem;
+      color: var(--gold-1); border: 1px solid var(--line); background: rgba(245,158,11,.1);
+    }
+    .panel li div { flex: 1; }
+    .kbd {
+      display: inline-flex; align-items: center; gap: 6px; padding: 1px 10px; border-radius: 8px;
+      background: #000; border: 1px solid var(--line-soft); font-weight: 700; font-size: .92em; white-space: nowrap;
+    }
+    .kbd svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .install-box .cta-row { margin-top: 22px; }
+
+    /* أسئلة شائعة */
+    .faq { display: grid; gap: 10px; }
+    details { border-radius: 16px; background: rgba(24,24,27,.65); border: 1px solid var(--line-soft); }
+    summary {
+      list-style: none; cursor: pointer; padding: 16px 18px; font-weight: 800;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 52px;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: '+'; font-size: 1.4rem; color: var(--gold-2); font-weight: 700; line-height: 1; }
+    details[open] summary::after { content: '–'; }
+    details p { padding: 0 18px 16px; color: var(--muted); }
+
+    footer { padding: 28px 0 8px; text-align: center; color: var(--muted); font-size: .9rem; }
+    footer a { color: var(--gold-1); }
+
+    /* شريط التثبيت السفلي */
+    .sticky-cta {
+      position: fixed; inset-inline: 0; bottom: 0; z-index: 30;
+      padding: 10px 16px calc(env(safe-area-inset-bottom) + 10px);
+      background: linear-gradient(to top, rgba(9,9,11,.97) 60%, rgba(9,9,11,0));
+      transform: translateY(110%); visibility: hidden; pointer-events: none;
+      transition: transform .25s ease, visibility 0s linear .25s;
+    }
+    .sticky-cta.show { transform: none; visibility: visible; pointer-events: auto; transition-delay: 0s; }
+    .sticky-cta .btn { width: 100%; max-width: 520px; margin: 0 auto; display: flex; }
+
+    /* نافذة آيفون */
+    dialog.sheet {
+      margin: auto auto 0; width: 100%; max-width: 480px; border: 1px solid var(--line); border-bottom: 0;
+      border-radius: 28px 28px 0 0; background: #111114; color: var(--text); padding: 22px 20px calc(env(safe-area-inset-bottom) + 22px);
+    }
+    dialog.sheet::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(3px); }
+    dialog.sheet h3 { font-size: 1.2rem; font-weight: 900; margin-bottom: 14px; }
+    dialog.sheet ol { list-style: none; counter-reset: q; display: grid; gap: 12px; }
+    dialog.sheet li { counter-increment: q; display: flex; gap: 12px; align-items: flex-start; }
+    dialog.sheet li::before {
+      content: counter(q); flex: none; width: 30px; height: 30px; border-radius: 50%;
+      display: grid; place-items: center; font-weight: 800; font-size: .9rem; color: #1c1003;
+      background: linear-gradient(135deg, var(--gold-1), var(--gold-2));
+    }
+    dialog.sheet .btn { width: 100%; margin-top: 18px; }
+
+    /* إشعار */
+    .toast {
+      position: fixed; z-index: 60; inset-inline: 0; margin: 0 auto; width: max-content; max-width: 90vw;
+      bottom: calc(env(safe-area-inset-bottom) + 90px); padding: 12px 18px; border-radius: 16px;
+      background: #09090b; border: 2px solid var(--gold-2); color: var(--gold-1); font-weight: 800; font-size: .92rem;
+      opacity: 0; transform: translateY(10px); transition: all .25s ease; pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: none; }
+
+    /* شاشات أكبر */
+    @media (min-width: 640px) {
+      .grid.feat { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (min-width: 900px) {
+      .hero { padding: 56px 0 64px; }
+      .hero .wrap { grid-template-columns: 1.1fr .9fr; gap: 56px; }
+      .grid.feat { grid-template-columns: repeat(3, 1fr); }
+      .steps { grid-template-columns: repeat(3, 1fr); }
+      .steps li { flex-direction: column; }
+      .install-box { padding: 34px; }
+      .sticky-cta { display: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="wrap">
+      <a class="brand" href="./" aria-label="لاس LAS">
+        <div class="brand-mark"><span>LAS</span></div>
+        <b class="gold-text">منصة لاس</b>
+      </a>
+      <a class="try" href="app.html">جرّبه الآن</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- الهيرو -->
+    <div class="hero">
+      <div class="wrap">
+        <div>
+          <span class="eyebrow"><i></i>مترجم صوتي فوري · 14 لغة</span>
+          <h1>تحدّث بلغتك،<br /><span class="gold-text">ليسمعك العالم</span></h1>
+          <p class="lead">اضغط المايك وتحدّث بالعربية، فيترجم لاس كلامك في لحظتها وينطقه بصوت رجل أو امرأة، ويكتب لك النطق مقسّماً بالحروف العربية لتقوله بنفسك.</p>
+
+          <div class="cta-row" id="heroCta">
+            <button class="btn btn-gold" id="installBtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>
+              <span id="installLabel">ثبّت التطبيق على موبايلك</span>
+            </button>
+            <a class="btn btn-ghost" href="app.html">جرّب من المتصفح</a>
+          </div>
+
+          <ul class="chips" aria-label="مميزات سريعة">
+            <li>بدون متجر تطبيقات</li>
+            <li>أندرويد وآيفون</li>
+            <li>يفتح بدون إنترنت</li>
+          </ul>
+        </div>
+
+        <!-- شكل التطبيق (توضيحي) -->
+        <div class="device-col" aria-hidden="true">
+          <div class="phone">
+            <div class="screen">
+              <div class="screen-head">
+                <span class="t gold-text">منصة لاس</span>
+                <span class="live">متصل</span>
+              </div>
+              <div class="pair">🇪🇬 العربية ⇄ 🇺🇸 الإنجليزية</div>
+              <div class="box"><small>النص المراد ترجمته</small><div class="big">قهوة ساخنة</div></div>
+              <div class="box out"><small>الترجمة الفورية</small><div class="big">Hot coffee</div></div>
+              <div class="box"><small>🗣️ النطق المقسّم بالعربي</small>
+                <div class="pills"><span class="pill">هُوت</span><span class="pill">كُو-فِي</span></div>
+              </div>
+              <div class="mic">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+                تحدّث بالمايكروفون
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- المميزات -->
+    <section id="features">
+      <div class="wrap">
+        <div class="sec-head">
+          <h2>كل ما تحتاجه <span class="gold-text">وأنت مسافر</span></h2>
+          <p>أدوات بسيطة تعمل من شاشة واحدة.</p>
+        </div>
+
+        <div class="grid feat">
+          <article class="card">
+            <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg></div>
+            <h3>14 لغة عالمية</h3>
+            <p>العربية والإنجليزية والألمانية والفرنسية والهولندية والإيطالية والإسبانية والصينية والهندية والتركية والروسية واليابانية والكورية والبرتغالية.</p>
+          </article>
+          <article class="card">
+            <div class="ico"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+            <h3>مايكروفون مستمر</h3>
+            <p>اضغط مرة واحدة وتحدّث بحرّية دون توقف، واضغط ثانية لتحصل على الترجمة منطوقة.</p>
+          </article>
+          <article class="card">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01"/></svg></div>
+            <h3>نطق مقسّم بالعربي</h3>
+            <p>تظهر الكلمات مقسّمة مع نطقها بحروف عربية لتردّدها بسهولة.</p>
+          </article>
+          <article class="card">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></div>
+            <h3>صوت رجل أو امرأة</h3>
+            <p>اختر الصوت الذي يناسبك، واسمع الترجمة بسرعة عادية أو ببطء لتتعلّمها.</p>
+          </article>
+          <article class="card">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M2 8.8a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M3 3l18 18"/><circle cx="12" cy="19.5" r="1"/></svg></div>
+            <h3>يفتح بدون إنترنت</h3>
+            <p>بعد أول فتح يعمل التطبيق من هاتفك مباشرة. ونزّل حزم اللغات والمايك مرة واحدة لتترجم وتتعرّف على صوتك بدون اتصال.</p>
+          </article>
+          <article class="card">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg></div>
+            <h3>جمل جاهزة للسفر</h3>
+            <p>صيدلية، فندق، مقهى… ضغطة واحدة وتظهر الترجمة والنطق.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- كيف يعمل -->
+    <section id="how">
+      <div class="wrap">
+        <div class="sec-head"><h2>ثلاث خطوات <span class="gold-text">وتتكلم</span></h2></div>
+        <ol class="steps">
+          <li><div><b>اختر لغة الترجمة</b><span>من شريط اللغات الـ 14 بضغطة واحدة.</span></div></li>
+          <li><div><b>اضغط المايك وتحدّث</b><span>أو اكتب النص إن كنت في مكان هادئ.</span></div></li>
+          <li><div><b>اسمع الترجمة وردّد النطق</b><span>بصوت رجل أو امرأة، بسرعة عادية أو بطيئة.</span></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- التثبيت -->
+    <section id="install">
+      <div class="wrap">
+        <div class="sec-head">
+          <h2>ثبّته على <span class="gold-text">شاشتك الرئيسية</span></h2>
+          <p>بدون متجر وبدون تحميل ثقيل، يظهر لاس كأي تطبيق على هاتفك.</p>
+        </div>
+
+        <div class="install-box">
+          <div class="tabs" role="tablist" aria-label="نوع الهاتف">
+            <button class="tab" role="tab" id="tab-android" aria-controls="panel-android" aria-selected="true" type="button">أندرويد</button>
+            <button class="tab" role="tab" id="tab-ios" aria-controls="panel-ios" aria-selected="false" type="button">آيفون</button>
+          </div>
+
+          <div class="panel" id="panel-android" role="tabpanel" aria-labelledby="tab-android">
+            <ol>
+              <li><div>افتح هذه الصفحة في متصفح <b>Chrome</b>.</div></li>
+              <li><div>اضغط زر <b>«ثبّت التطبيق»</b> في الأعلى، أو افتح قائمة <span class="kbd">⋮</span> واختر <b>«تثبيت التطبيق»</b> أو <b>«إضافة إلى الشاشة الرئيسية»</b>.</div></li>
+              <li><div>أكّد التثبيت، وستجد أيقونة لاس بين تطبيقاتك.</div></li>
+            </ol>
+          </div>
+
+          <div class="panel" id="panel-ios" role="tabpanel" aria-labelledby="tab-ios" hidden>
+            <ol>
+              <li><div>افتح هذه الصفحة في متصفح <b>Safari</b>.</div></li>
+              <li><div>اضغط زر المشاركة
+                <span class="kbd"><svg viewBox="0 0 24 24"><path d="M12 15V3m0 0L8 7m4-4l4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg> مشاركة</span>
+                أسفل الشاشة.</div></li>
+              <li><div>اختر <b>«إضافة إلى الشاشة الرئيسية»</b> ثم <b>«إضافة»</b>.</div></li>
+            </ol>
+          </div>
+
+          <div class="cta-row">
+            <button class="btn btn-gold" id="installBtn2" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>
+              <span class="installLabel">ثبّت التطبيق</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- أسئلة شائعة -->
+    <section id="faq">
+      <div class="wrap">
+        <div class="sec-head"><h2>أسئلة <span class="gold-text">شائعة</span></h2></div>
+        <div class="faq">
+          <details>
+            <summary>هل أحتاج لتحميله من المتجر؟</summary>
+            <p>لا. يُثبَّت مباشرة من المتصفح بضغطة واحدة، ويظهر على شاشتك الرئيسية بأيقونته الخاصة.</p>
+          </details>
+          <details>
+            <summary>هل يعمل بدون إنترنت؟</summary>
+            <p>يفتح التطبيق بدون إنترنت بعد أول فتح، والنطق بالعربي والجمل الجاهزة تعمل بدونه. للترجمة الحرّة والمايكروفون بدون إنترنت، نزّل الحزم من زر «الأوفلاين» داخل التطبيق (مرة واحدة على واي فاي، وتحتاج مساحة من عشرات إلى مئات الميجابايت). جودة ترجمة الجهاز أقل من جوجل، فيُستخدم جوجل تلقائياً عند توفر الإنترنت.</p>
+          </details>
+          <details>
+            <summary>ما المتصفح الأنسب؟</summary>
+            <p>Chrome على أندرويد، وSafari على الآيفون.</p>
+          </details>
+          <details>
+            <summary>هل يُحدَّث تلقائياً؟</summary>
+            <p>نعم. عند فتحك التطبيق مع اتصال بالإنترنت يصلك آخر إصدار تلقائياً.</p>
+          </details>
+          <details>
+            <summary>كيف أحذفه؟</summary>
+            <p>مثل أي تطبيق: اضغط مطوّلاً على أيقونة لاس ثم اختر الإزالة أو الحذف.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>© 2026 منصة لاس LAS · <a href="app.html">افتح التطبيق</a></p>
+    </div>
+  </footer>
+
+  <!-- شريط تثبيت سفلي للموبايل -->
+  <div class="sticky-cta" id="stickyCta">
+    <button class="btn btn-gold" id="installBtn3" type="button"><span class="installLabel">ثبّت التطبيق على موبايلك</span></button>
+  </div>
+
+  <!-- نافذة تعليمات آيفون -->
+  <dialog class="sheet" id="iosSheet" aria-labelledby="iosTitle">
+    <h3 id="iosTitle" class="gold-text">التثبيت على الآيفون</h3>
+    <ol>
+      <li><div>افتح الصفحة في <b>Safari</b>.</div></li>
+      <li><div>اضغط زر المشاركة
+        <span class="kbd"><svg viewBox="0 0 24 24"><path d="M12 15V3m0 0L8 7m4-4l4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg></span>
+        أسفل الشاشة.</div></li>
+      <li><div>اختر <b>«إضافة إلى الشاشة الرئيسية»</b> ثم <b>«إضافة»</b>.</div></li>
+    </ol>
+    <button class="btn btn-gold" id="iosClose" type="button">تمام، فهمت</button>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      var $ = function (s, r) { return (r || document).querySelector(s); };
+      var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+
+      var isStandalone = function () {
+        return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+      };
+      var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      var deferred = null;
+
+      /* ----- إشعار صغير ----- */
+      var toastEl = $('#toast'), toastTimer;
+      function toast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 3000);
+      }
+
+      /* ----- التبويبات ----- */
+      function selectTab(which) {
+        ['android', 'ios'].forEach(function (k) {
+          var on = k === which;
+          $('#tab-' + k).setAttribute('aria-selected', on ? 'true' : 'false');
+          $('#panel-' + k).hidden = !on;
+        });
+      }
+      $('#tab-android').addEventListener('click', function () { selectTab('android'); });
+      $('#tab-ios').addEventListener('click', function () { selectTab('ios'); });
+      selectTab(isIOS ? 'ios' : 'android');
+
+      /* ----- حالة الزر ----- */
+      var buttons = [$('#installBtn'), $('#installBtn2'), $('#installBtn3')];
+      if (isStandalone()) {
+        $$('#installLabel, .installLabel').forEach(function (el) { el.textContent = 'افتح التطبيق'; });
+      }
+
+      /* ----- التثبيت ----- */
+      function goToInstall() {
+        selectTab(isIOS ? 'ios' : 'android');
+        var box = $('#install');
+        if (box) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      function onInstall() {
+        if (isStandalone()) { location.href = 'app.html'; return; }
+        if (deferred) {
+          deferred.prompt();
+          deferred.userChoice.then(function (c) {
+            if (c && c.outcome === 'accepted') toast('جاري تثبيت لاس…');
+            deferred = null;
+          });
+          return;
+        }
+        if (isIOS) {
+          var sheet = $('#iosSheet');
+          if (sheet && typeof sheet.showModal === 'function') { sheet.showModal(); return; }
+        }
+        goToInstall();
+      }
+      buttons.forEach(function (b) { if (b) b.addEventListener('click', onInstall); });
+
+      $('#iosClose').addEventListener('click', function () { $('#iosSheet').close(); });
+      $('#iosSheet').addEventListener('click', function (e) { if (e.target === this) this.close(); });
+
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferred = e;
+      });
+      window.addEventListener('appinstalled', function () {
+        deferred = null;
+        toast('تم التثبيت ✓ ستجد لاس على شاشتك الرئيسية');
+      });
+
+      /* ----- الشريط السفلي: يظهر فقط عندما لا يكون زر الهيرو ولا قسم التثبيت أمام العين ----- */
+      var sticky = $('#stickyCta'), hero = $('#heroCta'), installSec = $('#install');
+      if ('IntersectionObserver' in window && sticky && hero && installSec && !isStandalone()) {
+        var visible = {};
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (en) { visible[en.target.id] = en.isIntersecting; });
+          sticky.classList.toggle('show', !visible.heroCta && !visible.install);
+        }, { threshold: 0 });
+        io.observe(hero);
+        io.observe(installSec);
+      }
+      if (isStandalone() && sticky) sticky.style.display = 'none';
+
+      /* ----- service worker ----- */
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('sw.js').catch(function () {});
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
