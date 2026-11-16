@@ -69,11 +69,13 @@ export async function runDiagnostics(languages) {
   return out;
 }
 
+const esc = (x) => String(x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 export async function renderDiagnostics(root, languages) {
   root.innerHTML = '<p class="text-xs text-zinc-400">⏳ جاري الفحص…</p>';
   const res = await runDiagnostics(languages);
   const icon = { ok: '✅', warn: '⚠️', bad: '❌' }, col = { ok: 'text-emerald-300', warn: 'text-amber-300', bad: 'text-red-300' };
-  root.innerHTML = res.map((r) => `<div class="flex gap-2 text-[11px] leading-relaxed"><span>${icon[r.level]}</span><p class="${col[r.level]}"><b>${r.title}:</b> ${r.detail}</p></div>`).join('') +
+  root.innerHTML = res.map((r) => `<div class="flex gap-2 text-[11px] leading-relaxed"><span>${icon[r.level]}</span><p class="${col[r.level]}"><b>${esc(r.title)}:</b> ${esc(r.detail)}</p></div>`).join('') +
     '<button data-copy class="mt-2 px-3 py-1.5 rounded-xl bg-zinc-800 border border-zinc-700 text-xs font-bold text-zinc-200">نسخ التقرير</button>';
   const text = 'تقرير جاهزية لاس\n' + res.map((r) => `${icon[r.level]} ${r.title}: ${r.detail}`).join('\n') + '\n' + navigator.userAgent;
   root.querySelector('[data-copy]').onclick = async (e) => { try { await navigator.clipboard.writeText(text); e.target.textContent = 'تم النسخ ✓'; } catch (_) { e.target.textContent = 'تعذّر النسخ'; } };

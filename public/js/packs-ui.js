@@ -54,6 +54,7 @@ export function initPacks({ root, languages, translator }) {
     } catch (e) { storageLine = ''; }
   }
 
+  const safe = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])).replace(/\n/g, '<br>');
   async function selfTest(id) {
     const path = P.testPath(id, !!SAMPLE[id]);
     if (!path) return { ok: false, msg: 'لا يوجد مسار ترجمة جاهز على الجهاز لهذه اللغة بعد.' };
@@ -94,7 +95,7 @@ export function initPacks({ root, languages, translator }) {
       : st.complete ? `<span class="text-emerald-300">✅ جاهز على جهازك (${fmt(st.bytes)})</span>`
       : st.done ? `<span class="text-amber-300">جزئي (${st.done}/${st.total}) — ${fmt(st.bytes)}</span>`
       : `<span class="text-zinc-500">غير منزّل — ${estText}</span>`;
-    const res = results[key] ? `<p class="text-[11px] ${results[key].ok ? 'text-emerald-300' : 'text-red-300'}">${results[key].msg}</p>` : '';
+    const res = results[key] ? `<p class="text-[11px] ${results[key].ok ? 'text-emerald-300' : 'text-red-300'}">${safe(results[key].msg)}</p>` : '';
     return `<div class="p-3 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-1">
       <div class="flex items-center justify-between gap-2"><div class="min-w-0"><p class="text-sm font-black text-zinc-100">${title}</p><p class="text-[11px] text-zinc-500">${note}</p></div>
       <div class="flex gap-1.5 shrink-0">${busy.has(key) ? '<span class="text-xs text-zinc-500">⏳</span>' : actions}</div></div>

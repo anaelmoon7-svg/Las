@@ -3,14 +3,14 @@
    - القواميس الكبيرة (الإنجليزي/الياباني) والمكتبات تُحفظ عند أول استخدام.
    - لا يتدخل في طلبات الترجمة والنطق ولا في تنزيل الموديلات (cross-origin). */
 
-const VERSION = 'las-v14';
+const VERSION = 'las-v15';
 const SHELL_CACHE = `${VERSION}-shell`;
 const BIG_CACHE = `${VERSION}-big`;
 
 const SHELL_FILES = [
   './', './index.html', './app.html', './manifest.webmanifest',
   './css/tailwind.css', './css/fonts.css',
-  './js/translate.js', './js/phonetics.js', './js/packs.js', './js/packs-ui.js', './js/offline-mic.js', './js/diagnostics.js', './js/ml-worker.js', './data/cmudict.json',
+  './js/app.js', './js/landing.js', './js/translate.js', './js/phonetics.js', './js/packs.js', './js/packs-ui.js', './js/offline-mic.js', './js/diagnostics.js', './js/ml-worker.js', './data/cmudict.json',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png',
   './icons/apple-touch-icon.png', './icons/favicon-32.png', './icons/las-icon.svg', './icons/las-logo-light.png',
   ...['arabic', 'latin'].flatMap((s) => [400, 600, 700, 800, 900].map((w) => `./fonts/cairo-${s}-${w}-normal.woff2`)),
@@ -66,6 +66,16 @@ self.addEventListener('fetch', (event) => {
           return res;
         })
         .catch(() => pageFromCache(req))
+    );
+    return;
+  }
+
+  // سكربت الصفحة نفسها: شبكة أولاً (4 ثوانٍ) كي لا يختلف عن نسخة الصفحة
+  if (/\/js\/(app|landing)\.js$/.test(url.pathname)) {
+    event.respondWith(
+      fetchWithTimeout(req, 4000)
+        .then((res) => { if (res.ok) { const copy = res.clone(); caches.open(SHELL_CACHE).then((c) => c.put(req, copy)); } return res; })
+        .catch(() => caches.match(req))
     );
     return;
   }

@@ -112,7 +112,7 @@ export async function netDiag(model) {
   const main = await Promise.all(urls.map(async (u) => [await probe(u), await probe(u, { Range: 'bytes=0-0' })]));
   let wk = null;
   try { wk = (await Promise.race([call({ op: 'probe', urls }), new Promise((_, rej) => setTimeout(() => rej(new Error('t')), 30000))])).rs; } catch (e) {}
-  return 'فحص الشبكة (م=الصفحة، و=المحرك؛ عادي ثم Range):<br>' + DIAG_FILES.map((f, i) => `${f.split('/').pop().replace('_quantized.onnx', '')}: م ${main[i].join(' ')} · و ${wk ? wk[urls[i]].join(' ') : '—'}`).join('<br>');
+  return 'فحص الشبكة (م=الصفحة، و=المحرك؛ عادي ثم Range):\n' + DIAG_FILES.map((f, i) => `${f.split('/').pop().replace('_quantized.onnx', '')}: م ${main[i].join(' ')} · و ${wk ? wk[urls[i]].join(' ') : '—'}`).join('\n');
 }
 
 // ---------- تنزيل من الصفحة نفسها: ملف ملف، ويكمل من مكان الانقطاع ----------
