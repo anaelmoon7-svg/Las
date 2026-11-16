@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#DDF1FF"/><stop offset="1" stop-color="#B9E1FB"/></linearGradient>
+<radialGradient id="sal" cx=".32" cy=".26" r=".9"><stop offset="0" stop-color="#FFA797"/><stop offset=".5" stop-color="#FF7A66"/><stop offset="1" stop-color="#F25A45"/></radialGradient></defs>
+<rect width="120" height="120" rx="28" fill="url(#sky)"/>
+<g transform="translate(60 60) scale(1) translate(-60 -60)">
+<circle cx="60" cy="60" r="43" fill="none" stroke="#1F7FC4" stroke-width="2.5" stroke-dasharray="1 8" stroke-linecap="round"/>
+<circle cx="60" cy="60" r="27" fill="url(#sal)"/><rect x="53.5" y="45" width="13" height="21" rx="6.5" fill="#fff"/>
+<path d="M47.5 60.5a12.5 12.5 0 0 0 25 0M60 73v6" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>
+<circle cx="90.4" cy="29.6" r="9" fill="#FFD84A" stroke="#0B2A45" stroke-width="2.5"/><circle cx="24" cy="83" r="5.5" fill="#0B2A45"/></g></svg>

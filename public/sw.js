@@ -3,7 +3,7 @@
    - القواميس الكبيرة (الإنجليزي/الياباني) والمكتبات تُحفظ عند أول استخدام.
    - لا يتدخل في طلبات الترجمة والنطق ولا في تنزيل الموديلات (cross-origin). */
 
-const VERSION = 'las-v7';
+const VERSION = 'las-v8';
 const SHELL_CACHE = `${VERSION}-shell`;
 const BIG_CACHE = `${VERSION}-big`;
 
@@ -12,7 +12,7 @@ const SHELL_FILES = [
   './css/tailwind.css', './css/fonts.css',
   './js/translate.js', './js/phonetics.js', './js/packs.js', './js/packs-ui.js', './js/offline-mic.js', './js/diagnostics.js', './js/ml-worker.js', './data/cmudict.json',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png',
-  './icons/apple-touch-icon.png', './icons/favicon-32.png',
+  './icons/apple-touch-icon.png', './icons/favicon-32.png', './icons/las-icon.svg', './icons/las-logo-light.png',
   ...['arabic', 'latin'].flatMap((s) => [400, 600, 700, 800, 900].map((w) => `./fonts/cairo-${s}-${w}-normal.woff2`)),
 ];
 

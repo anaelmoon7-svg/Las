@@ -43,9 +43,10 @@
 
     /* الرأس */
     .top { display: flex; align-items: center; justify-content: space-between; padding: 14px 2px 4px; }
-    .brand { display: flex; align-items: baseline; gap: 8px; }
-    .brand b { font-weight: 900; font-size: 30px; line-height: 1; letter-spacing: -1px; }
-    .brand i { font-style: normal; font-weight: 800; font-size: 11px; letter-spacing: .34em; color: var(--sky-4); }
+    .brand { display: flex; align-items: center; gap: 10px; direction: ltr; }
+    .brand img { display: block; border-radius: 12px; box-shadow: 0 4px 12px rgba(11, 42, 69, .14); }
+    .brand b { display: block; font-weight: 900; font-size: 26px; line-height: 1; letter-spacing: 1px; }
+    .brand i { display: block; font-style: normal; font-weight: 800; font-size: 10px; letter-spacing: .04em; color: var(--sky-4); margin-top: 3px; white-space: nowrap; }
     .top-actions { display: flex; align-items: center; gap: 8px; }
     .net { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--ink-2); }
     .net::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
@@ -185,7 +186,7 @@
 <body>
   <div class="wrap">
     <header class="top">
-      <div class="brand"><b>لاس</b><i>LAS</i></div>
+      <div class="brand"><img src="icons/las-icon.svg" alt="" width="44" height="44"><div><b>LAS</b><i>لاس · Listen And Speak</i></div></div>
       <div class="top-actions">
         <span id="net" class="net">متصل</span>
         <button class="icon-btn" id="open-settings" aria-label="الإعدادات والعمل بدون إنترنت">
@@ -231,7 +232,8 @@
           <button class="act" id="copy">انسخ</button>
         </div>
       </section>
-      <p class="foot">لاس · مترجم صوتي بـ 14 لغة · <a href="index.html" style="color:inherit">عن التطبيق</a></p>
+      <img src="icons/las-logo-light.png" alt="LAS — Listen And Speak — لاس" style="display:block;margin:26px auto 0;width:min(78%,300px);height:auto">
+      <p class="foot" style="margin-top:8px">لاس · مترجم صوتي بـ 14 لغة · <a href="index.html" style="color:inherit">عن التطبيق</a></p>
     </main>
   </div>
 
