@@ -53,6 +53,12 @@ export async function runDiagnostics(languages) {
     const local = voices.filter((v) => v.localService).length;
     add(!voices.length ? 'warn' : miss.length ? 'warn' : 'ok', 'أصوات نطق الترجمة',
       !voices.length ? 'لم تظهر أصوات بعد (جرّب إعادة الفحص بعد لحظات)' : `${voices.length} صوت (${local} منها يعمل بدون إنترنت)` + (miss.length ? ` · ينقصك صوت: ${miss.join('، ')}` : ''));
+    // ما الذي يراه المتصفح فعلاً؟ يفيد لتتبع صوت ناقص رغم تثبيته في إعدادات الهاتف
+    if (voices.length) {
+      const cnt = {}; voices.forEach((v) => { const k = String(v.lang || '?').replace('_', '-'); cnt[k] = (cnt[k] || 0) + 1; });
+      const arLike = voices.filter((v) => /arab|عرب|^ar([-_]|$)/i.test(v.name + ' ' + v.lang)).map((v) => v.name + ' (' + v.lang + ')');
+      add('ok', 'لغات الأصوات التي يراها المتصفح', Object.keys(cnt).sort().map((k) => k + '×' + cnt[k]).join(' ') + (arLike.length ? ' · عربي: ' + arLike.join('، ') : ' · لا صوت عربي بينها'));
+    }
   } catch (e) {}
   try {
     const has = async (u) => !!(await caches.match(u));
