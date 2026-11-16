@@ -139,6 +139,8 @@
     .row input { width: 22px; height: 22px; accent-color: var(--salmon-2); }
     .wide { width: 100%; min-height: 46px; border-radius: 14px; background: var(--ink); color: #fff; font-weight: 800; font-size: 13px; }
     .wide.ghost { background: #fff; color: var(--ink); border: 1.5px solid var(--ink); }
+    .vp select { width: 100%; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: #fff; font: inherit; font-weight: 700; font-size: 14px; padding: 0 8px; color: var(--ink); margin-bottom: 8px; }
+    .vp-hint { margin: 8px 0 0; }
     .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .lang-btn { display: flex; align-items: center; gap: 10px; text-align: start; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 10px 12px; min-height: 56px; }
     .lang-btn[aria-pressed="true"] { background: var(--canary-2); border-color: var(--ink); }
@@ -248,10 +250,18 @@
     <div class="sheet-head"><h2 id="set-title">الإعدادات</h2><button class="icon-btn" data-close aria-label="إغلاق">✕</button></div>
     <div class="sec">
       <h3>صوت الترجمة</h3>
-      <p>«طبيعي» صوت بشري أوضح من الإنترنت (صوت واحد لكل لغة). «صوت الجهاز» يعمل بدون إنترنت، وجودته ونوعه (رجل أو امرأة) حسب الأصوات المثبتة في هاتفك.</p>
-      <div class="seg" id="voicemode" style="margin-bottom:8px"><button data-v="natural">طبيعي (أونلاين)</button><button data-v="device">صوت الجهاز</button></div>
+      <p>«تلقائي» يستخدم أفضل صوت على جهازك إن كان عالي الجودة، وإلا يستعين بصوت الإنترنت. «أونلاين» صوت واحد لكل لغة من الإنترنت. «صوت الجهاز» يعمل بدون إنترنت، وجودته ونوعه (رجل أو امرأة) حسب الأصوات المثبتة في هاتفك.</p>
+      <div class="seg" id="voicemode" style="margin-bottom:8px"><button data-v="auto">تلقائي</button><button data-v="natural">أونلاين</button><button data-v="device">صوت الجهاز</button></div>
       <div class="seg" id="gender"><button data-g="female">صوت امرأة</button><button data-g="male">صوت رجل</button></div>
       <label class="row" style="margin-top:8px">انطق الترجمة تلقائياً بعد الكلام <input type="checkbox" id="autospeak" /></label>
+    </div>
+    <div class="sec vp">
+      <h3>اختيار صوت كل لغة</h3>
+      <p>اختر اللغة ثم الصوت الذي يعجبك من أصوات جهازك، وستسمع تجربة فورية. الأصوات المعلَّمة بـ ✦ هي عادةً الأوضح. يُطبَّق الاختيار في وضعي «تلقائي» و«صوت الجهاز».</p>
+      <select id="vp-lang" aria-label="لغة الصوت"></select>
+      <select id="vp-voice" aria-label="الصوت"></select>
+      <button class="wide ghost" id="vp-test">جرّب الصوت</button>
+      <p class="vp-hint" id="vp-hint"></p>
     </div>
     <div class="sec">
       <h3>التعرّف على الصوت</h3>
@@ -398,23 +408,38 @@
     const MALE = /\b(male|man|david|mark|daniel|george|james|guy|thomas|diego|jorge|luca|maged|tarik|naayf|hamed|shakir|hans|stefan|pavel|yuri|ichiro|otoya|rishi|hemant|cem|xander)\b/i;
     const FEMALE = /\b(female|woman|zira|samantha|susan|karen|moira|tessa|victoria|laila|salma|hoda|zariyah|mariam|amelie|anna|helena|sabina|paulina|monica|alice|federica|ellen|kyoko|yuna|lekha|kalpana|yelda|milena|irina|luciana|joana|ting|mei)\b/i;
     const GOOD = /natural|neural|enhanced|premium|online|google|siri|wavenet/i, BAD = /espeak|compact|eloquence|pico/i;
-    function pickVoice(l, male) {
-      const all = (window.speechSynthesis ? speechSynthesis.getVoices() : []);
-      const base = l.ttsCode.split('-')[0].toLowerCase();
-      const pool = all.filter((v) => v.lang.toLowerCase().startsWith(base));
-      const score = (v) => (GOOD.test(v.name) ? 4 : 0) - (BAD.test(v.name) ? 6 : 0)
-        + ((male ? MALE : FEMALE).test(v.name) ? 3 : 0) - ((male ? FEMALE : MALE).test(v.name) ? 3 : 0)
-        + (v.lang.replace('_', '-').toLowerCase() === l.recCode.toLowerCase() ? 1 : 0);
-      return pool.sort((x, y) => score(y) - score(x))[0] || null;
+    const voiceMode = () => store.get('las_voice_mode', 'auto');
+    const isHQ = (v) => !!v && !BAD.test(v.name) && (GOOD.test(v.name) || v.localService === false);
+    const voicesFor = (l) => { const base = l.ttsCode.split('-')[0].toLowerCase(); return (window.speechSynthesis ? speechSynthesis.getVoices() : []).filter((v) => v.lang.toLowerCase().replace('_', '-').startsWith(base)); };
+    const voiceScore = (v, l, male, online) => (GOOD.test(v.name) ? 4 : 0) - (BAD.test(v.name) ? 6 : 0)
+      + ((male ? MALE : FEMALE).test(v.name) ? 3 : 0) - ((male ? FEMALE : MALE).test(v.name) ? 3 : 0)
+      + (online && v.localService === false ? 2 : 0)
+      + (v.lang.replace('_', '-').toLowerCase() === l.recCode.toLowerCase() ? 4 : 0);
+    // الصوت الذي اختاره المستخدم لهذه اللغة (إن كان لا يزال موجوداً، ومتاحاً بدون إنترنت عند انقطاعه)
+    function chosenVoice(l) {
+      const name = store.get('las_voice_' + l.code, ''); if (!name) return null;
+      const v = voicesFor(l).find((x) => x.name === name) || null;
+      return v && (navigator.onLine !== false || v.localService !== false) ? v : null;
     }
-    function speakDevice(text, l, slow) {
+    function pickVoice(l, male) {
+      const online = navigator.onLine !== false;
+      let pool = voicesFor(l);
+      if (!online) { const local = pool.filter((v) => v.localService !== false); if (local.length) pool = local; }
+      return chosenVoice(l) || pool.sort((x, y) => voiceScore(y, l, male, online) - voiceScore(x, l, male, online))[0] || null;
+    }
+    // نقسّم النص إلى جمل: أنعم في الإيقاع، ويتفادى انقطاع الجمل الطويلة في بعض المتصفحات.
+    const splitSentences = (t) => ((t.match(/[^.!?؟。！？…\n]+[.!?؟。！？…]*/g) || [t]).map((x) => x.trim()).filter(Boolean));
+    function speakDevice(text, l, slow, voiceOverride) {
       if (!('speechSynthesis' in window)) { setStatus('جهازك لا يدعم نطق النص.', 'err'); return; }
       try {
         speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text), v = pickVoice(l, voiceGender === 'male');
-        u.lang = l.recCode; if (v) u.voice = v;
-        u.pitch = 1; u.rate = slow ? 0.75 : 1; // بدون تغيير النبرة: هو ما كان يجعل الصوت آلياً
-        speechSynthesis.speak(u);
+        const v = voiceOverride || pickVoice(l, voiceGender === 'male');
+        splitSentences(text).forEach((part) => {
+          const u = new SpeechSynthesisUtterance(part);
+          u.lang = l.recCode; if (v) u.voice = v;
+          u.pitch = 1; u.rate = slow ? 0.75 : 1; // بدون تغيير النبرة: هو ما كان يجعل الصوت آلياً
+          speechSynthesis.speak(u);
+        });
       } catch (e) { setStatus('تعذّر تشغيل الصوت.', 'err'); }
     }
     // صوت طبيعي من الإنترنت (خدمة جوجل غير الرسمية): يُقسَّم النص ويُشغَّل بالتتابع، وعند أي فشل نرجع لصوت الجهاز.
@@ -441,10 +466,36 @@
     function speak(text, code, slow) {
       if (!text) return;
       stopSpeaking();
-      const l = meta(code), mode = store.get('las_voice_mode', 'natural');
-      if (mode === 'natural' && navigator.onLine !== false) speakNet(text, l, slow); else speakDevice(text, l, slow);
+      const l = meta(code), mode = voiceMode(), online = navigator.onLine !== false;
+      if (mode === 'device') { speakDevice(text, l, slow); return; }
+      if (mode === 'natural') { if (online) speakNet(text, l, slow); else speakDevice(text, l, slow); return; }
+      // تلقائي: أفضل صوت على الجهاز إن كان عالي الجودة (أو اختاره المستخدم)، وإلا صوت الإنترنت
+      const dv = pickVoice(l, voiceGender === 'male');
+      if (!online || chosenVoice(l) || isHQ(dv)) speakDevice(text, l, slow); else speakNet(text, l, slow);
     }
-    if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => {};
+
+    // ---------- منتقي صوت اللغة ----------
+    const SAMPLES = { 'ar': 'مرحباً، كيف حالك اليوم؟', 'en-US': 'Hello, how are you today?', 'en-GB': 'Hello, how are you today?', 'de': 'Hallo, wie geht es dir heute?', 'fr': 'Bonjour, comment allez-vous aujourd\u2019hui ?', 'nl': 'Hallo, hoe gaat het vandaag met je?', 'it': 'Ciao, come stai oggi?', 'es': 'Hola, ¿cómo estás hoy?', 'zh-CN': '你好，你今天好吗？', 'hi': 'नमस्ते, आप आज कैसे हैं?', 'tr': 'Merhaba, bugün nasılsın?', 'ru': 'Привет, как у тебя дела сегодня?', 'ja': 'こんにちは、今日はお元気ですか？', 'ko': '안녕하세요, 오늘 잘 지내세요?', 'pt': 'Olá, como estás hoje?' };
+    function paintVoicePicker() {
+      const langSel = $('vp-lang'), voiceSel = $('vp-voice'); if (!langSel || !voiceSel) return;
+      if (!langSel.options.length) langSel.innerHTML = LANGUAGES_14.map((l) => `<option value="${l.code}">${l.flag} ${l.nameAr}</option>`).join('');
+      if (!langSel.dataset.init) { langSel.value = tgt; langSel.dataset.init = '1'; }
+      const l = meta(langSel.value), online = navigator.onLine !== false, male = voiceGender === 'male';
+      const list = voicesFor(l).sort((x, y) => voiceScore(y, l, male, online) - voiceScore(x, l, male, online));
+      const saved = store.get('las_voice_' + l.code, '');
+      voiceSel.innerHTML = `<option value="">تلقائي (الأفضل المتاح)</option>` + list.map((v) => `<option value="${esc(v.name)}">${isHQ(v) ? '✦ ' : ''}${esc(v.name)}${v.localService === false ? ' (يحتاج إنترنت)' : ''}</option>`).join('');
+      voiceSel.value = list.some((v) => v.name === saved) ? saved : '';
+      $('vp-hint').textContent = list.length ? '' : 'لا توجد أصوات لهذه اللغة على جهازك. ثبّت بيانات الصوت من إعدادات «تحويل النص إلى كلام» في هاتفك، أو استخدم وضع «أونلاين».';
+    }
+    function testVoice() {
+      const l = meta($('vp-lang').value), name = $('vp-voice').value;
+      const v = name ? voicesFor(l).find((x) => x.name === name) : null;
+      stopSpeaking(); speakDevice(SAMPLES[l.code] || SAMPLES[l.ttsCode] || '', l, false, v || undefined);
+    }
+    $('vp-lang').onchange = () => { paintVoicePicker(); testVoice(); };
+    $('vp-voice').onchange = () => { store.set('las_voice_' + $('vp-lang').value, $('vp-voice').value); testVoice(); };
+    $('vp-test').onclick = testVoice;
+    if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => paintVoicePicker();
     $('play').onclick = () => speak(lastOut, tgt, false);
     $('slow').onclick = () => speak(lastOut, tgt, true);
     $('copy').onclick = async () => { if (!lastOut) return; try { await navigator.clipboard.writeText(lastOut); setStatus('تم نسخ الترجمة.', 'ok'); } catch (e) { setStatus('تعذّر النسخ.', 'err'); } };
@@ -590,10 +641,10 @@
     }
     function paintSettings() {
       document.querySelectorAll('#gender button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.g === voiceGender));
-      document.querySelectorAll('#voicemode button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === store.get('las_voice_mode', 'natural')));
-      document.querySelectorAll('#gender button').forEach((b) => { b.disabled = store.get('las_voice_mode', 'natural') === 'natural'; b.style.opacity = b.disabled ? .45 : 1; });
+      document.querySelectorAll('#voicemode button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === voiceMode()));
+      document.querySelectorAll('#gender button').forEach((b) => { b.disabled = voiceMode() === 'natural'; b.style.opacity = b.disabled ? .45 : 1; });
       document.querySelectorAll('#micmode button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === getMicMode()));
-      $('autospeak').checked = autoSpeak;
+      $('autospeak').checked = autoSpeak; paintVoicePicker();
       if (store.get('las_speechdata_ready', '')) { $('prep').textContent = 'تم التجهيز ✓ (اضغط للتحديث)'; }
     }
     $('open-settings').onclick = () => { paintSettings(); $('set-scrim').classList.add('open'); getPacksApi().then((a) => a.render()).catch((e) => { $('packs-root').textContent = 'تعذّر تحميل مدير الحزم: ' + e.message; }); };
