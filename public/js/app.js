@@ -44,8 +44,9 @@ function renderPair() {
   const others = LANGUAGES_14.filter((l) => l.code !== src);
   $('ring').innerHTML = others.map((l, i) => `<div class="slot" style="--a:${(360 / others.length) * i}deg"><div class="unrot"><button class="chip" data-code="${l.code}" aria-pressed="${l.code === tgt}" aria-label="ترجم إلى ${l.nameAr}" title="${l.nameAr}">${l.flag}</button></div></div>`).join('');
 }
-function setTarget(code) { if (code === src) return; tgt = code; renderPair(); setStatus(`الترجمة إلى ${meta(tgt).nameAr}`); translateNow(); }
-function swapLangs() { [src, tgt] = [tgt, src]; if (lastOut) { $('input').value = lastOut; } renderPair(); translateNow(); }
+// أي اختيار يدوي للغات يعتبر الوضع الحالي هو «أنا» من جديد
+function setTarget(code) { if (code === src) return; otherTurn = false; tgt = code; renderPair(); setStatus(`الترجمة إلى ${meta(tgt).nameAr}`); translateNow(); }
+function swapLangs() { otherTurn = false; [src, tgt] = [tgt, src]; if (lastOut) { $('input').value = lastOut; } renderPair(); translateNow(); }
 let holdTimer = null;
 function holdOrbit(ms) { $('stage').classList.add('hold'); clearTimeout(holdTimer); if (ms) holdTimer = setTimeout(() => { if (!micBusy()) $('stage').classList.remove('hold'); }, ms); }
 $('ring').addEventListener('click', (e) => { const b = e.target.closest('.chip'); if (b) { setTarget(b.dataset.code); holdOrbit(3500); } });
@@ -61,6 +62,7 @@ function openPicker(which) {
 $('from-btn').onclick = () => openPicker('from'); $('to-btn').onclick = () => openPicker('to');
 $('pick-grid').addEventListener('click', (e) => {
   const b = e.target.closest('.lang-btn'); if (!b) return; const c = b.dataset.code;
+  otherTurn = false;
   if (picking === 'from') { if (c === tgt) tgt = src; src = c; } else { if (c === src) src = tgt; tgt = c; }
   $('pick-scrim').classList.remove('open'); renderPair(); translateNow();
 });
@@ -77,14 +79,17 @@ async function renderPhonetic(text, code) {
   } catch (e) { $('phon-wrap').hidden = true; }
 }
 function translateSoon() { clearTimeout(debounce); debounce = setTimeout(translateNow, 450); }
-async function translateNow() {
+// أثناء الكلام: نترجم الجمل المكتملة فقط (مش كل نتيجة مؤقتة) وببطء أكتر، ومن غير ما نحفظ الجمل الناقصة في الكاش.
+// كان بيتبعت طلب كل 450ms طول الكلام، فجوجل بيرد بـ 429 بسرعة والكاش يتملي بأجزاء جمل.
+function translateSoonPartial() { clearTimeout(debounce); debounce = setTimeout(() => translateNow({ partial: true }), 900); }
+async function translateNow(opts = {}) {
   clearTimeout(debounce);
   const text = $('input').value.trim(), out = $('out'), my = ++seq;
   if (!text) { lastOut = ''; out.textContent = 'الترجمة تظهر هنا.'; out.className = 'out-text muted'; $('via').textContent = ''; $('phon-wrap').hidden = true; return ''; }
   if (!lastOut) { out.textContent = '… جاري الترجمة'; out.className = 'out-text muted'; }
   try {
     const { t } = await enginePromise;
-    const res = await t.translate(text, src, tgt);
+    const res = await t.translate(text, src, tgt, { cache: !opts.partial });
     if (my !== seq) return lastOut;
     lastOut = res.text; out.textContent = res.text; out.className = 'out-text'; out.dir = tgt === 'ar' ? 'rtl' : 'ltr';
     $('via').textContent = VIA[res.via] || '';
@@ -224,11 +229,15 @@ function startOnline() {
   try {
     rec = new SR(); rec.lang = meta(src).recCode; rec.continuous = true; rec.interimResults = true;
     rec.onresult = (e) => {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) finalText += r[0].transcript + ' '; else interim += r[0].transcript; }
-      $('input').value = (finalText + interim).trim(); translateSoon();
+      let interim = '', gotFinal = false;
+      for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) { finalText += r[0].transcript + ' '; gotFinal = true; } else interim += r[0].transcript; }
+      $('input').value = (finalText + interim).trim();
+      if (gotFinal && micState === 'online') translateSoonPartial();
     };
-    rec.onend = () => { if (micState === 'online') { try { rec.start(); } catch (e) {} } };
+    rec.onend = () => {
+      if (micState === 'online') { try { rec.start(); } catch (e) {} return; }
+      if (recEnded) { const r = recEnded; recEnded = null; r(); }
+    };
     rec.onerror = (ev) => {
       const er = ev && ev.error;
       if (er === 'no-speech' || er === 'aborted') return;
@@ -240,7 +249,16 @@ function startOnline() {
     rec.start(); micUI('online'); setStatus(`يسمعك الآن (${meta(src).nameAr})… اضغط للإيقاف.`, 'rec');
   } catch (e) { micUI('idle'); setStatus('تعذّر تشغيل المايكروفون: ' + e.message, 'err'); }
 }
-async function stopOnline() { micUI('working'); try { rec && rec.stop(); } catch (e) {} await new Promise((r) => setTimeout(r, 350)); micUI('idle'); await finishSpeech(); }
+// بعد stop() المتصفح بيبعت آخر نتيجة نهائية ثم onend. كنا بنستنى 350ms ثابتة، وده أقل من اللازم غالباً على أندرويد
+// فآخر كلمات المتكلم كانت بتضيع. دلوقتي بنستنى onend فعلاً (بحد أقصى 2.5 ثانية).
+let recEnded = null;
+async function stopOnline() {
+  micUI('working');
+  const ended = new Promise((r) => { recEnded = r; setTimeout(r, 2500); });
+  try { rec && rec.stop(); } catch (e) { if (recEnded) { recEnded(); recEnded = null; } }
+  await ended; recEnded = null;
+  micUI('idle'); await finishSpeech();
+}
 async function startDevice() {
   let P, M;
   try { [P, M] = await Promise.all([import('./packs.js'), import('./offline-mic.js')]); }
@@ -270,11 +288,16 @@ async function fallbackToDevice() {
   if (P.installedWhisper()) startDevice();
   else setStatus('خدمة التعرّف على الصوت تحتاج إنترنت. نزّل حزمة المايك من الإعدادات لتعمل بدونه.', 'err');
 }
+// دور مين بيتكلم: false = أنا، true = الطرف الآخر (اللغتين مقلوبتين مؤقتاً).
+// قبل كده زرار «الطرف الآخر» كان بيقلب اللغتين كل مرة: يسيبهم مقلوبين بعد دوره، ولو اتداس مرتين ورا بعض يرجعهم
+// فيسمع الطرف الآخر بلغتي أنا.
+let otherTurn = false;
+function setTurn(other) { if (other !== otherTurn) { [src, tgt] = [tgt, src]; otherTurn = other; renderPair(); } }
 function toggleMic(reverse) {
   if (micState === 'working') return;
   if (micState === 'online') return stopOnline();
   if (micState === 'device') return stopDevice();
-  if (reverse) { [src, tgt] = [tgt, src]; renderPair(); }
+  setTurn(!!reverse);
   stopSpeaking();
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (getMicMode() === 'device' || !SR || navigator.onLine === false) startDevice(); else startOnline();
@@ -326,6 +349,7 @@ async function confStart() {
   try {
     confRec = new SR(); confRec.lang = meta($('conf-spk').value).recCode; confRec.continuous = true; confRec.interimResults = true;
     confRec.onresult = (e) => {
+      if (!confOn) return;
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) { const tx = r[0].transcript.trim(); if (tx) confAdd(tx); } else interim += r[0].transcript; }
       $('conf-live').textContent = interim;
@@ -346,7 +370,13 @@ document.addEventListener('visibilitychange', async () => { if (document.visibil
 $('conf-open').onclick = () => { if (micBusy()) return; confSetup(); confPaintSize(); $('conf').classList.add('open'); };
 $('conf-close').onclick = () => { confStop(); $('conf').classList.remove('open'); };
 $('conf-go').onclick = () => (confOn ? confStop() : confStart());
-$('conf-voice').onclick = (e) => { confVoice = !confVoice; e.currentTarget.setAttribute('aria-pressed', confVoice); if (!confVoice) confSpeakReset(); };
+// المايك في المؤتمر لازم يفضل شغال طول الوقت عشان ما يفوتش كلام المحاضر، فلو الترجمة اتنطقت من سماعة الموبايل
+// المايك هيلقطها ويترجمها كأنها كلام المحاضر. الحل الوحيد اللي ما يضيعش كلام: سماعة أذن، فبننبه عليها بوضوح.
+$('conf-voice').onclick = (e) => {
+  confVoice = !confVoice; e.currentTarget.setAttribute('aria-pressed', confVoice);
+  if (!confVoice) confSpeakReset();
+  else $('conf-live').textContent = '🎧 استخدم سماعة أذن: لو الترجمة اتنطقت من سماعة الموبايل، المايك هيلقطها ويترجمها كأنها كلام المتحدث.';
+};
 $('conf-size').onclick = () => { confSize = (confSize + 1) % CONF_SIZES.length; store.set('las_conf_size', String(confSize)); confPaintSize(); };
 $('conf-save').onclick = () => {
   if (!confLines.length) { $('conf-live').textContent = 'لا يوجد نص للحفظ بعد.'; return; }

@@ -56,6 +56,21 @@ export const PHRASEBOOK = {
 
 const baseCode = (c) => String(c || '').toLowerCase().split('-')[0];
 
+// مطابقة الجمل الجاهزة: الكلام الجاي من المايك ما فيهوش فواصل ولا علامات استفهام وممكن يختلف في الهمزات والتشكيل،
+// فالمطابقة الحرفية عمرها ما كانت بتنجح من المايك. بنطبّع الطرفين قبل المقارنة.
+export function normalizeArabic(s) {
+  return String(s || '')
+    .replace(/[ً-ْٰـ]/g, '') // تشكيل وتطويل
+    .replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ').trim().toLowerCase();
+}
+let PHRASE_INDEX = null;
+export function findPhrase(text) {
+  if (!PHRASE_INDEX) PHRASE_INDEX = new Map(Object.entries(PHRASEBOOK).map(([k, v]) => [normalizeArabic(k), v]));
+  return PHRASE_INDEX.get(normalizeArabic(text)) || null;
+}
+
 // ---------- تقسيم النصوص الطويلة عند حدود الجمل ----------
 export function splitText(text, max = 450) {
   const t = String(text).trim();
@@ -94,6 +109,18 @@ async function googleOnce(fetchImpl, text, sl, tl, ms) {
   const out = data[0].map((seg) => (seg && seg[0]) || '').join('').trim();
   if (!out) throw new Error('empty google result');
   return out;
+}
+
+// MyMemory بيرفض أي طلب أكبر من 500 بايت. النص بيتقسم على 450 حرف، والحرف العربي = 2 بايت والصيني/الياباني = 3،
+// فأي جزء عربي أطول من ~250 حرف كان بيترفض. هنا بنقسمه أصغر على قد البايتات.
+const MM_MAX_BYTES = 480;
+const utf8Len = (s) => new TextEncoder().encode(s).length;
+async function myMemory(fetchImpl, text, sl, tl, ms) {
+  if (utf8Len(text) <= MM_MAX_BYTES) return myMemoryOnce(fetchImpl, text, sl, tl, ms);
+  const parts = splitText(text, 150).flatMap((p) => (utf8Len(p) <= MM_MAX_BYTES ? [p] : splitText(p, 100)));
+  const outs = [];
+  for (const p of parts) outs.push(await myMemoryOnce(fetchImpl, p, sl, tl, ms));
+  return outs.join(' ');
 }
 
 async function myMemoryOnce(fetchImpl, text, sl, tl, ms) {
@@ -147,12 +174,14 @@ export function createTranslator(opts = {}) {
     }
     // 2) MyMemory
     if (fast) return null;
-    try { return { text: await myMemoryOnce(fetchImpl, text, sl, tl, timeout), via: 'mymemory' }; }
+    try { return { text: await myMemory(fetchImpl, text, sl, tl, timeout), via: 'mymemory' }; }
     catch (e) { reasons.push('mymemory:' + (e.name === 'AbortError' ? 'timeout' : e.message)); }
     return null;
   }
 
-  async function translate(text, srcCode, tgtCode) {
+  // o.cache = false: ما نحفظش النتيجة (مثلاً جمل ناقصة أثناء الكلام)
+  async function translate(text, srcCode, tgtCode, o = {}) {
+    const remember = (k, v) => { if (o.cache !== false) { MEM.set(k, v); saveCache(); } };
     if (!cacheLoaded) { loadCache(); cacheLoaded = true; }
     const t = String(text || '').trim();
     if (!t) return { text: '', via: 'none' };
@@ -169,7 +198,7 @@ export function createTranslator(opts = {}) {
       if (!hasLocal) return null;
       try {
         const r = await local(t, srcCode, tgtCode);
-        if (r) { MEM.set(key, r); saveCache(); return { text: r, via: 'local' }; }
+        if (r) { remember(key, r); return { text: r, via: 'local' }; }
       } catch (e) { reasons.push('local:' + e.message); }
       return null;
     };
@@ -190,7 +219,7 @@ export function createTranslator(opts = {}) {
       }
       if (onlineOk && outs.length) {
         const res = outs.join(' ');
-        MEM.set(key, res); saveCache();
+        remember(key, res);
         return { text: res, via };
       }
     } else reasons.push('offline');
@@ -200,8 +229,9 @@ export function createTranslator(opts = {}) {
 
     // الجمل الجاهزة
     if (sl === 'ar') {
-      const hit = PHRASEBOOK[t];
-      if (hit && hit[tl]) return { text: hit[tl], via: 'phrasebook' };
+      // ملاحظة: tl للصيني بيبقى 'zh-CN' بينما مفتاح الجمل الجاهزة 'zh'، فكان الصيني عمره ما بيطابق
+      const hit = findPhrase(t), out = hit && (hit[tl] || hit[baseCode(tl)]);
+      if (out) return { text: out, via: 'phrasebook' };
     }
     throw new NoTranslation(reasons);
   }

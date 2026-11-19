@@ -3,7 +3,7 @@
    - القواميس الكبيرة (الإنجليزي/الياباني) والمكتبات تُحفظ عند أول استخدام.
    - لا يتدخل في طلبات الترجمة والنطق ولا في تنزيل الموديلات (cross-origin). */
 
-const VERSION = 'las-v15';
+const VERSION = 'las-v16';
 const SHELL_CACHE = `${VERSION}-shell`;
 const BIG_CACHE = `${VERSION}-big`;
 
@@ -19,12 +19,19 @@ const SHELL_FILES = [
 // ملفات كبيرة لا تتغير: كاش أولاً
 const BIG_PATTERN = /\/(dict|data|vendor|fonts|icons|js\/chunks)\//;
 
+// الملفات اللي من غيرها التطبيق ما يفتحش أصلاً: لو واحد منها فشل، التثبيت يفشل (ونفضل على النسخة القديمة الشغالة).
+// الباقي (أيقونات، خطوط، قاموس...) لو فشل ما يوقفش التثبيت: قبل كده أي ملف واحد يرجع 404 كان بيلغي وضع الأوفلاين كله.
+const CRITICAL = new Set(['./', './app.html', './index.html', './js/app.js', './js/landing.js', './js/translate.js', './css/tailwind.css']);
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(SHELL_CACHE)
       .then((c) => Promise.all(SHELL_FILES.map((u) => fetch(u, { cache: 'reload' }).then((r) => {
         if (!r.ok) throw new Error('precache ' + u + ' ' + r.status);
         return clean(r).then((cr) => c.put(u, cr));
+      }).catch((e) => {
+        if (CRITICAL.has(u)) throw e;
+        console.warn('[sw] optional file not cached:', u, e && e.message);
       }))))
       .then(() => self.skipWaiting())
   );
@@ -71,7 +78,9 @@ self.addEventListener('fetch', (event) => {
   }
 
   // سكربت الصفحة نفسها: شبكة أولاً (4 ثوانٍ) كي لا يختلف عن نسخة الصفحة
-  if (/\/js\/(app|landing)\.js$/.test(url.pathname)) {
+  // (الآن لكل سكربتات التطبيق مش app.js بس: عشان packs.js و translate.js وغيرهم يفضلوا من نفس نسخة الصفحة،
+  //  بدل ما وحدة جديدة تستدعي دالة مش موجودة في وحدة قديمة متخزنة. js/chunks برّه القاعدة دي.)
+  if (/\/js\/[^/]+\.js$/.test(url.pathname)) {
     event.respondWith(
       fetchWithTimeout(req, 4000)
         .then((res) => { if (res.ok) { const copy = res.clone(); caches.open(SHELL_CACHE).then((c) => c.put(req, copy)); } return res; })

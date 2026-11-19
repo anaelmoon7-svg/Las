@@ -74,6 +74,18 @@ async function modelEntries(model) {
   const ks = await c.keys();
   return { c, list: ks.filter((k) => k.url.includes('/' + model + '/')) };
 }
+// المتصفح ممكن يمسح Cache Storage لما مساحة الجهاز تقل (لو التخزين مش محمي)، بينما البيان في localStorage
+// بيفضل يقول «منزّل». النتيجة: الحزمة تبان جاهزة ومن غير نت الترجمة تفشل. هنا بنشيل من البيان أي موديل ملفاته اختفت.
+export async function reconcileManifest() {
+  if (typeof caches === 'undefined') return [];
+  const man = readManifest(), gone = [];
+  for (const model of Object.keys(man)) {
+    try { const { list } = await modelEntries(model); if (!list.length) { delete man[model]; gone.push(model); } } catch (e) {}
+  }
+  if (gone.length) writeManifest(man);
+  return gone;
+}
+
 export async function cacheBytes(model) {
   const { c, list } = await modelEntries(model);
   let sum = 0;

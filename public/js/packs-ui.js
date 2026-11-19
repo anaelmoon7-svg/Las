@@ -14,10 +14,12 @@ export function initPacks({ root, languages, translator }) {
   const progress = {}; // key → نص التقدم (للصفوف التي تُنزَّل الآن)
   const results = {};  // key → { ok, msg }
   const busy = new Set();
-  let storageLine = '';
+  let storageLine = '', evictNote = '';
 
   // ربط الموديلات المحلية بالمترجم
   translator.setLocal((x, s, g) => P.localTranslate(x, s, g), (s, g) => P.canTranslateLocally(s, g));
+  // نتأكد إن الحزم اللي البيان بيقول إنها منزّلة لسه ملفاتها موجودة فعلاً (المتصفح ممكن يكون مسحها)
+  P.reconcileManifest().then((gone) => { if (gone.length) { evictNote = '⚠️ المتصفح مسح بعض الحزم لتوفير المساحة. نزّلها تاني لو محتاجها بدون نت.'; render(); } }).catch(() => {});
   translator.setPreferLocal(ls.get(PREFER_KEY) === '1');
 
   const rows = [];
@@ -108,7 +110,7 @@ export function initPacks({ root, languages, translator }) {
       <p class="text-xs font-black text-amber-300">📦 حزم الترجمة على الجهاز</p>
       <p class="text-[11px] text-zinc-400">تُنزَّل مرة واحدة من الإنترنت ثم تعمل بدون اتصال. الأحجام تقديرية حتى يكتمل التنزيل ثم يظهر الحجم الفعلي. يُفضَّل التنزيل على واي فاي.</p>
       <label class="flex items-center gap-2 text-xs text-zinc-300"><input type="checkbox" data-act="prefer" ${prefer ? 'checked' : ''}> فضّل الترجمة على الجهاز حتى مع وجود إنترنت (أسرع للنصوص القصيرة، جودته أقل من جوجل)</label>
-      <p class="text-[11px] text-zinc-500">${storageLine}</p></div>`;
+      <p class="text-[11px] text-zinc-500">${storageLine}</p>${evictNote ? `<p class="text-[11px] text-amber-300">${evictNote}</p>` : ''}</div>`;
 
     h += '<div class="space-y-2">';
     for (const r of rows) {
