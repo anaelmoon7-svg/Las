@@ -240,7 +240,11 @@ function micUI(state) {
 // ---------- المحادثة التلقائية ----------
 // تتكلم وتسكت ← تتترجم وتتنطق للطرف الآخر ← المايك يفتح للطرف الآخر بلغته ← يسكت ← يتترجملك ويتنطق ← يرجعلك… وهكذا.
 // للإيقاف: اضغط المايك وإنت ساكت (أو والترجمة بتتنطق).
-const SILENCE_MS = 1600;
+// 2.5 ثانية سكوت = خلص كلامه. أقل من كده كان بيقطع الجمل الطويلة لما الواحد ياخد نفسه.
+const SILENCE_MS = Math.max(1200, parseInt(store.get('las_silence_ms', '2500'), 10) || 2500);
+// المايك التالي: من غير نت (أو وضع الجهاز) = Whisper على الموبايل، غير كده = تعرّف المتصفح
+const useDeviceMic = () => getMicMode() === 'device' || !(window.SpeechRecognition || window.webkitSpeechRecognition) || navigator.onLine === false;
+function startListening(opts) { if (useDeviceMic()) startDevice(opts); else startOnline(opts); }
 let convo = false, silenceTimer = null, convoSpeaking = false, convoSpeakFin = null;
 function armSilence() {
   clearTimeout(silenceTimer);
@@ -278,7 +282,7 @@ async function finishSpeech() {
     // الدور للطرف التاني، والمايك يفتح لوحده بلغته
     await new Promise((r) => setTimeout(r, 300));
     if (!convo) return;
-    setTurn(!otherTurn); startOnline({ keepConvo: true });
+    setTurn(!otherTurn); startListening({ keepConvo: true });
     return;
   }
   if (convo) { micUI('idle'); endConvo(out ? '' : 'وقفت المحادثة لأن الترجمة ما نجحتش. اضغط المايك وجرّب تاني.'); return; }
@@ -326,29 +330,50 @@ async function stopOnline() {
   await ended; recEnded = null;
   micUI('idle'); await finishSpeech();
 }
-async function startDevice() {
+// المايك على الجهاز (Whisper) — بيشتغل من غير نت بالحزمة المتنزلة.
+// في المحادثة التلقائية بنكشف السكوت من مستوى الصوت نفسه (مفيش نتايج كلام لحظية زي تعرّف المتصفح):
+// لما يتسمع كلام وبعده سكوت SILENCE_MS، بنقفل التسجيل ونفرّغ ونترجم وننطق ونفتح للطرف التاني.
+let devHeard = false, devLastLoud = 0, devNoise = 0.01, devVadTimer = null;
+async function startDevice(opts = {}) {
+  if (!opts.keepConvo) convo = store.get('las_autoconvo', '1') === '1';
   let P, M;
   try { [P, M] = await Promise.all([import('./packs.js'), import('./offline-mic.js')]); }
-  catch (e) { setStatus('تعذّر تحميل وحدة التعرّف على الصوت: ' + e.message, 'err'); return; }
-  if (!P.installedWhisper()) { setStatus('المايك بدون إنترنت يحتاج حزمة تعرّف على الصوت. نزّلها من الإعدادات.', 'err'); return; }
-  try { offlineRec = M.createRecorder(); await offlineRec.start(); }
-  catch (e) { offlineRec = null; setStatus('تعذّر فتح المايكروفون: ' + (e && e.name === 'NotAllowedError' ? 'لم يُسمح بالإذن' : (e && e.message) || e), 'err'); return; }
+  catch (e) { convo = false; setStatus('تعذّر تحميل وحدة التعرّف على الصوت: ' + e.message, 'err'); return; }
+  if (!P.installedWhisper()) { convo = false; setTurn(false); setStatus('المايك بدون إنترنت يحتاج حزمة تعرّف على الصوت (Whisper). نزّلها من الإعدادات.', 'err'); return; }
+  devHeard = false; devLastLoud = Date.now(); devNoise = 0.01;
+  const onLevel = (lv) => {
+    // أرضية الضوضاء بتتعلم ببطء من الأصوات الواطية؛ الكلام = أعلى منها بوضوح
+    if (lv < devNoise * 2) devNoise = devNoise * 0.95 + lv * 0.05;
+    if (lv > Math.max(0.02, devNoise * 3)) { devHeard = true; devLastLoud = Date.now(); }
+  };
+  try { offlineRec = M.createRecorder(); await offlineRec.start(onLevel); }
+  catch (e) { offlineRec = null; convo = false; setStatus('تعذّر فتح المايكروفون: ' + (e && e.name === 'NotAllowedError' ? 'لم يُسمح بالإذن' : (e && e.message) || e), 'err'); return; }
   $('input').value = ''; lastOut = '';
-  micUI('device'); setStatus('يسجّل على جهازك بدون إنترنت… اضغط للإيقاف.', 'rec');
+  micUI('device');
+  setStatus(convo
+    ? `${otherTurn ? '🗣️ دور الطرف الآخر' : '🎙️ دورك'} (بدون إنترنت): اتكلم ${meta(src).nameAr}، ولما تسكت هيترجم وينطق لوحده. (اضغط المايك وإنت ساكت لإنهاء المحادثة)`
+    : 'يسجّل على جهازك بدون إنترنت… اضغط للإيقاف.', 'rec');
   offlineTimer = setTimeout(() => { if (micState === 'device') stopDevice(); }, 120000);
+  clearInterval(devVadTimer);
+  if (convo) devVadTimer = setInterval(() => {
+    if (micState !== 'device' || !convo) { clearInterval(devVadTimer); return; }
+    if (devHeard && Date.now() - devLastLoud > SILENCE_MS) { clearInterval(devVadTimer); stopDevice(); }
+  }, 200);
 }
 async function stopDevice() {
+  clearInterval(devVadTimer);
   const r0 = offlineRec; offlineRec = null; clearTimeout(offlineTimer); micUI('working');
   setStatus('جاري التعرّف على الصوت على جهازك… (أول مرة أبطأ)');
+  // في المحادثة: لو ما اتسمعش كلام مفهوم نرجع نسمع نفس الشخص بدل ما نوقف كل حاجة
+  const retry = (msg) => { micUI('idle'); if (convo) { setStatus(msg); startDevice({ keepConvo: true }); } else setStatus(msg, 'err'); };
   try {
     const r = await r0.stop();
-    if (r.seconds < 0.4 || r.peak < 0.01) { setStatus('لم يُسمع صوت واضح. قرّب الجهاز وحاول مرة أخرى.', 'err'); return; }
+    if (r.seconds < 0.4 || r.peak < 0.01) return retry('لم يُسمع صوت واضح. قرّب الجهاز وحاول مرة أخرى.');
     const P = await import('./packs.js');
     const text = await P.transcribe(r.audio, meta(src).recCode);
-    if (!text) { setStatus('لم يُلتقط كلام مفهوم. حاول بصوت أوضح.', 'err'); return; }
+    if (!text) return retry('لم يُلتقط كلام مفهوم. حاول بصوت أوضح.');
     $('input').value = text; micUI('idle'); await finishSpeech();
-  } catch (e) { setStatus('فشل التعرّف على الصوت على الجهاز: ' + ((e && e.message) || e), 'err'); }
-  finally { micUI('idle'); }
+  } catch (e) { micUI('idle'); if (convo) endConvo(); setStatus('فشل التعرّف على الصوت على الجهاز: ' + ((e && e.message) || e), 'err'); }
 }
 async function fallbackToDevice() {
   const P = await import('./packs.js');
@@ -370,7 +395,14 @@ function toggleMic(reverse) {
     }
     return stopOnline();
   }
-  if (micState === 'device') return stopDevice();
+  if (micState === 'device') {
+    if (convo && !devHeard) {
+      clearInterval(devVadTimer); clearTimeout(offlineTimer);
+      const r0 = offlineRec; offlineRec = null; try { r0 && r0.cancel(); } catch (e) {}
+      micUI('idle'); endConvo('⏹️ وقفت المحادثة.'); return;
+    }
+    return stopDevice();
+  }
   convo = false;
   setTurn(!!reverse);
   stopSpeaking();
