@@ -25,7 +25,9 @@ let src = store.get('las_src', 'ar'), tgt = store.get('las_tgt', 'en-US');
 if (!LANGUAGES_14.some((l) => l.code === src)) src = 'ar';
 if (!LANGUAGES_14.some((l) => l.code === tgt) || tgt === src) tgt = src === 'en-US' ? 'ar' : 'en-US';
 let voiceGender = store.get('las_gender', 'female'), autoSpeak = store.get('las_autospeak', '1') === '1';
-let lastOut = '', seq = 0, debounce = null, picking = 'from';
+let lastOut = '', lastOutLang = '', seq = 0, debounce = null, picking = 'from';
+// دور مين بيتكلم: false = أنا، true = الطرف الآخر (اللغتين مقلوبتين مؤقتاً). شوف setTurn تحت.
+let otherTurn = false;
 
 const enginePromise = import('./translate.js').then((m) => ({ m, t: m.createTranslator() }));
 const phoneticPromise = import('./phonetics.js');
@@ -40,7 +42,9 @@ function renderPair() {
   $('to-name').textContent = `${b.flag} ${b.native}`;
   $('other-label').textContent = `الطرف الآخر يتكلّم: \u2068${b.native}\u2069`;
   $('input').dir = src === 'ar' ? 'rtl' : 'ltr';
-  store.set('las_src', src); store.set('las_tgt', tgt);
+  // نحفظ دايماً اتجاه «أنا» مش الاتجاه المقلوب مؤقتاً لدور الطرف الآخر: الموبايل بيقفل الصفحة ويفتحها في الخلفية كتير،
+  // ولو حفظنا المقلوب كان التطبيق يفتح على إن لغة الطرف الآخر هي لغتي، والمايك العادي يفضل يسمع بيها.
+  store.set('las_src', otherTurn ? tgt : src); store.set('las_tgt', otherTurn ? src : tgt);
   const others = LANGUAGES_14.filter((l) => l.code !== src);
   $('ring').innerHTML = others.map((l, i) => `<div class="slot" style="--a:${(360 / others.length) * i}deg"><div class="unrot"><button class="chip" data-code="${l.code}" aria-pressed="${l.code === tgt}" aria-label="ترجم إلى ${l.nameAr}" title="${l.nameAr}">${l.flag}</button></div></div>`).join('');
 }
@@ -91,7 +95,7 @@ async function translateNow(opts = {}) {
     const { t } = await enginePromise;
     const res = await t.translate(text, src, tgt, { cache: !opts.partial });
     if (my !== seq) return lastOut;
-    lastOut = res.text; out.textContent = res.text; out.className = 'out-text'; out.dir = tgt === 'ar' ? 'rtl' : 'ltr';
+    lastOut = res.text; lastOutLang = tgt; out.textContent = res.text; out.className = 'out-text'; out.dir = tgt === 'ar' ? 'rtl' : 'ltr';
     $('via').textContent = VIA[res.via] || '';
     renderPhonetic(res.text, tgt);
     return res.text;
@@ -203,8 +207,9 @@ $('vp-lang').onchange = () => { paintVoicePicker(); testVoice(); };
 $('vp-voice').onchange = () => { store.set('las_voice_' + $('vp-lang').value, $('vp-voice').value); testVoice(); };
 $('vp-test').onclick = testVoice;
 if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => paintVoicePicker();
-$('play').onclick = () => speak(lastOut, tgt, false);
-$('slow').onclick = () => speak(lastOut, tgt, true);
+// lastOutLang: لغة الترجمة المعروضة (ممكن تختلف عن tgt بعد ما نرجع من دور الطرف الآخر)
+$('play').onclick = () => speak(lastOut, lastOutLang || tgt, false);
+$('slow').onclick = () => speak(lastOut, lastOutLang || tgt, true);
 $('copy').onclick = async () => { if (!lastOut) return; try { await navigator.clipboard.writeText(lastOut); setStatus('تم نسخ الترجمة.', 'ok'); } catch (e) { setStatus('تعذّر النسخ.', 'err'); } };
 $('showbig').onclick = () => { if (!lastOut) return; $('show-text').textContent = lastOut; $('show').classList.add('open'); };
 $('show').onclick = () => $('show').classList.remove('open');
@@ -220,8 +225,11 @@ function micUI(state) {
   $('stage').classList.toggle('hold', state !== 'idle');
 }
 async function finishSpeech() {
+  const outLang = tgt; // نثبّت لغة الترجمة قبل ما نرجع الاتجاه، عشان النطق يبقى باللغة الصح
   const out = await translateNow();
-  if (out) { setStatus('تمت الترجمة.', 'ok'); if (autoSpeak) setTimeout(() => speak(out, tgt, false), 150); $('talk').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+  if (out) { setStatus('تمت الترجمة.', 'ok'); if (autoSpeak) setTimeout(() => speak(out, outLang, false), 150); $('talk').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+  // دور الطرف الآخر خلص: نرجّع الشاشة والمايك لاتجاهي أنا على طول
+  if (otherTurn) setTurn(false);
 }
 function startOnline() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -288,10 +296,8 @@ async function fallbackToDevice() {
   if (P.installedWhisper()) startDevice();
   else setStatus('خدمة التعرّف على الصوت تحتاج إنترنت. نزّل حزمة المايك من الإعدادات لتعمل بدونه.', 'err');
 }
-// دور مين بيتكلم: false = أنا، true = الطرف الآخر (اللغتين مقلوبتين مؤقتاً).
 // قبل كده زرار «الطرف الآخر» كان بيقلب اللغتين كل مرة: يسيبهم مقلوبين بعد دوره، ولو اتداس مرتين ورا بعض يرجعهم
-// فيسمع الطرف الآخر بلغتي أنا.
-let otherTurn = false;
+// فيسمع الطرف الآخر بلغتي أنا. دلوقتي otherTurn (فوق) بيحدد الدور، ودور الطرف الآخر بيخلص لوحده في finishSpeech.
 function setTurn(other) { if (other !== otherTurn) { [src, tgt] = [tgt, src]; otherTurn = other; renderPair(); } }
 function toggleMic(reverse) {
   if (micState === 'working') return;
