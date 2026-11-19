@@ -24,6 +24,12 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 let src = store.get('las_src', 'ar'), tgt = store.get('las_tgt', 'en-US');
 if (!LANGUAGES_14.some((l) => l.code === src)) src = 'ar';
 if (!LANGUAGES_14.some((l) => l.code === tgt) || tgt === src) tgt = src === 'en-US' ? 'ar' : 'en-US';
+// إصلاح لمرة واحدة: النسخ القديمة كانت بتحفظ اللغتين مقلوبين أثناء دور «الطرف الآخر»، فناس كتير اتحفظ عندهم
+// إن لغتهم إنجليزي والترجمة للعربي، والمايك العادي بقى يسمع إنجليزي. لو المحفوظ «حاجة ← عربي» من قبل الإصلاح، نرجّعه.
+if (!store.get('las_pair_v', '')) {
+  if (tgt === 'ar' && src !== 'ar') [src, tgt] = [tgt, src];
+  store.set('las_pair_v', '2');
+}
 let voiceGender = store.get('las_gender', 'female'), autoSpeak = store.get('las_autospeak', '1') === '1';
 let lastOut = '', lastOutLang = '', seq = 0, debounce = null, picking = 'from';
 // دور مين بيتكلم: false = أنا، true = الطرف الآخر (اللغتين مقلوبتين مؤقتاً). شوف setTurn تحت.
@@ -85,7 +91,14 @@ async function renderPhonetic(text, code) {
 function translateSoon() { clearTimeout(debounce); debounce = setTimeout(translateNow, 450); }
 // أثناء الكلام: نترجم الجمل المكتملة فقط (مش كل نتيجة مؤقتة) وببطء أكتر، ومن غير ما نحفظ الجمل الناقصة في الكاش.
 // كان بيتبعت طلب كل 450ms طول الكلام، فجوجل بيرد بـ 429 بسرعة والكاش يتملي بأجزاء جمل.
-function translateSoonPartial() { clearTimeout(debounce); debounce = setTimeout(() => translateNow({ partial: true }), 900); }
+// ترجمة حيّة وإنت بتتكلم، بس بحد أقصى طلب كل 1.2 ثانية (مش مع كل كلمة)، عشان الشاشة ما تبانش واقفة
+// وفي نفس الوقت ما نوصلش لحد جوجل (429). بعض موبايلات أندرويد ما بتبعتش نتايج نهائية غير لما توقف المايك.
+let partialAt = 0;
+function translateSoonPartial() {
+  clearTimeout(debounce);
+  const wait = Math.max(0, 1200 - (Date.now() - partialAt));
+  debounce = setTimeout(() => { partialAt = Date.now(); translateNow({ partial: true }); }, wait);
+}
 async function translateNow(opts = {}) {
   clearTimeout(debounce);
   const text = $('input').value.trim(), out = $('out'), my = ++seq;
@@ -237,10 +250,10 @@ function startOnline() {
   try {
     rec = new SR(); rec.lang = meta(src).recCode; rec.continuous = true; rec.interimResults = true;
     rec.onresult = (e) => {
-      let interim = '', gotFinal = false;
-      for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) { finalText += r[0].transcript + ' '; gotFinal = true; } else interim += r[0].transcript; }
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) finalText += r[0].transcript + ' '; else interim += r[0].transcript; }
       $('input').value = (finalText + interim).trim();
-      if (gotFinal && micState === 'online') translateSoonPartial();
+      if (micState === 'online') translateSoonPartial();
     };
     rec.onend = () => {
       if (micState === 'online') { try { rec.start(); } catch (e) {} return; }
