@@ -237,15 +237,57 @@ function micUI(state) {
   m.setAttribute('aria-label', state === 'idle' ? 'ابدأ الكلام' : 'أوقف واسمع الترجمة');
   $('stage').classList.toggle('hold', state !== 'idle');
 }
+// ---------- المحادثة التلقائية ----------
+// تتكلم وتسكت ← تتترجم وتتنطق للطرف الآخر ← المايك يفتح للطرف الآخر بلغته ← يسكت ← يتترجملك ويتنطق ← يرجعلك… وهكذا.
+// للإيقاف: اضغط المايك وإنت ساكت (أو والترجمة بتتنطق).
+const SILENCE_MS = 1600;
+let convo = false, silenceTimer = null, convoSpeaking = false, convoSpeakFin = null;
+function armSilence() {
+  clearTimeout(silenceTimer);
+  if (!convo) return;
+  silenceTimer = setTimeout(() => { if (micState === 'online' && $('input').value.trim()) stopOnline(); }, SILENCE_MS);
+}
+function endConvo(msg) {
+  convo = false; clearTimeout(silenceTimer);
+  if (convoSpeakFin) { const f = convoSpeakFin; convoSpeakFin = null; f(); }
+  convoSpeaking = false; stopSpeaking(); setTurn(false);
+  if (msg) setStatus(msg);
+}
+// نطق ينتظر لحد ما الصوت يخلص فعلاً (عشان المايك ما يفتحش والترجمة لسه بتتنطق فيسمعها)
+function speakAndWait(text, lang) {
+  return new Promise((resolve) => {
+    let done = false;
+    const fin = () => { if (done) return; done = true; convoSpeakFin = null; resolve(); };
+    convoSpeakFin = fin;
+    speak(text, lang, false, fin);
+    setTimeout(fin, 20000 + text.length * 150); // حماية لو المتصفح ما قالش إن النطق خلص
+  });
+}
 async function finishSpeech() {
-  const outLang = tgt; // نثبّت لغة الترجمة قبل ما نرجع الاتجاه، عشان النطق يبقى باللغة الصح
+  const outLang = tgt; // نثبّت لغة الترجمة قبل ما نغيّر الدور، عشان النطق يبقى باللغة الصح
+  if (convo) micUI('working');
   const out = await translateNow();
-  if (out) { setStatus('تمت الترجمة.', 'ok'); if (autoSpeak) setTimeout(() => speak(out, outLang, false), 150); $('talk').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+  if (out) {
+    setStatus('تمت الترجمة.', 'ok'); $('talk').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (autoSpeak) {
+      if (convo) { micUI('idle'); convoSpeaking = true; setStatus(`🔊 بينطق الترجمة (${meta(outLang).nameAr})… اضغط المايك للإيقاف`, 'ok'); await speakAndWait(out, outLang); convoSpeaking = false; }
+      else setTimeout(() => speak(out, outLang, false), 150);
+    }
+  }
+  if (convo && out) {
+    // الدور للطرف التاني، والمايك يفتح لوحده بلغته
+    await new Promise((r) => setTimeout(r, 300));
+    if (!convo) return;
+    setTurn(!otherTurn); startOnline({ keepConvo: true });
+    return;
+  }
+  if (convo) { micUI('idle'); endConvo(out ? '' : 'وقفت المحادثة لأن الترجمة ما نجحتش. اضغط المايك وجرّب تاني.'); return; }
   // دور الطرف الآخر خلص: نرجّع الشاشة والمايك لاتجاهي أنا على طول
   if (otherTurn) setTurn(false);
 }
-function startOnline() {
+function startOnline(opts = {}) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!opts.keepConvo) convo = store.get('las_autoconvo', '1') === '1';
   finalText = ''; $('input').value = ''; lastOut = '';
   try {
     rec = new SR(); rec.lang = meta(src).recCode; rec.continuous = true; rec.interimResults = true;
@@ -253,7 +295,7 @@ function startOnline() {
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) { const r = e.results[i]; if (r.isFinal) finalText += r[0].transcript + ' '; else interim += r[0].transcript; }
       $('input').value = (finalText + interim).trim();
-      if (micState === 'online') translateSoonPartial();
+      if (micState === 'online') { translateSoonPartial(); armSilence(); }
     };
     rec.onend = () => {
       if (micState === 'online') { try { rec.start(); } catch (e) {} return; }
@@ -267,13 +309,17 @@ function startOnline() {
       else if (er === 'not-allowed') setStatus('لم يُسمح باستخدام المايكروفون. فعّل الإذن من إعدادات المتصفح.', 'err');
       else setStatus('توقف المايكروفون. اضغط للمحاولة مرة أخرى.', 'err');
     };
-    rec.start(); micUI('online'); setStatus(`يسمعك الآن (${meta(src).nameAr})… اضغط للإيقاف.`, 'rec');
+    rec.start(); micUI('online');
+    setStatus(convo
+      ? `${otherTurn ? '🗣️ دور الطرف الآخر' : '🎙️ دورك'}: اتكلم ${meta(src).nameAr}، ولما تسكت هيترجم وينطق لوحده. (اضغط المايك وإنت ساكت لإنهاء المحادثة)`
+      : `يسمعك الآن (${meta(src).nameAr})… اضغط للإيقاف.`, 'rec');
   } catch (e) { micUI('idle'); setStatus('تعذّر تشغيل المايكروفون: ' + e.message, 'err'); }
 }
 // بعد stop() المتصفح بيبعت آخر نتيجة نهائية ثم onend. كنا بنستنى 350ms ثابتة، وده أقل من اللازم غالباً على أندرويد
 // فآخر كلمات المتكلم كانت بتضيع. دلوقتي بنستنى onend فعلاً (بحد أقصى 2.5 ثانية).
 let recEnded = null;
 async function stopOnline() {
+  clearTimeout(silenceTimer);
   micUI('working');
   const ended = new Promise((r) => { recEnded = r; setTimeout(r, 2500); });
   try { rec && rec.stop(); } catch (e) { if (recEnded) { recEnded(); recEnded = null; } }
@@ -313,9 +359,19 @@ async function fallbackToDevice() {
 // فيسمع الطرف الآخر بلغتي أنا. دلوقتي otherTurn (فوق) بيحدد الدور، ودور الطرف الآخر بيخلص لوحده في finishSpeech.
 function setTurn(other) { if (other !== otherTurn) { [src, tgt] = [tgt, src]; otherTurn = other; renderPair(); } }
 function toggleMic(reverse) {
+  // أثناء المحادثة التلقائية: الضغط والترجمة بتتنطق = إيقاف المحادثة
+  if (convo && convoSpeaking) { endConvo('⏹️ وقفت المحادثة.'); micUI('idle'); return; }
   if (micState === 'working') return;
-  if (micState === 'online') return stopOnline();
+  if (micState === 'online') {
+    // الضغط وإنت ساكت (مفيش كلام) أثناء المحادثة = إنهاؤها. والضغط بعد كلام = ترجم دلوقتي من غير ما تستنى السكوت.
+    if (convo && !$('input').value.trim()) {
+      clearTimeout(silenceTimer); micUI('idle'); try { rec && rec.stop(); } catch (e) {}
+      endConvo('⏹️ وقفت المحادثة.'); return;
+    }
+    return stopOnline();
+  }
   if (micState === 'device') return stopDevice();
+  convo = false;
   setTurn(!!reverse);
   stopSpeaking();
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -441,3 +497,23 @@ window.addEventListener('online', paintNet); window.addEventListener('offline', 
 renderPair(); paintNet();
 setTimeout(() => getPacksApi().catch(() => {}), 1200);
 if ('serviceWorker' in navigator) window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+
+// ---------- إشعار «فيه نسخة جديدة» ----------
+// الـ service worker الجديد بيتفعّل لوحده، لكن الصفحة المفتوحة بتفضل شغالة بالكود القديم لحد ما تتفتح من جديد.
+// فلما نسخة جديدة تتفعّل بنظهر زرار تحديث واضح، ونشيّك على تحديثات كل ما المستخدم يرجع للتطبيق.
+function showUpdateBanner() {
+  if ($('las-update')) return;
+  const b = document.createElement('button');
+  b.id = 'las-update'; b.type = 'button';
+  b.textContent = '✨ فيه نسخة جديدة من لاس — اضغط هنا للتحديث';
+  b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:9999;padding:14px 16px;border-radius:16px;border:2px solid #F5CE42;background:#462659;color:#FCE988;font:800 15px Cairo,sans-serif;box-shadow:0 10px 28px rgba(0,0,0,.45);cursor:pointer';
+  b.onclick = () => { b.disabled = true; b.textContent = '… جاري التحديث'; location.reload(); };
+  document.body.appendChild(b);
+}
+if ('serviceWorker' in navigator) {
+  let hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) showUpdateBanner(); hadController = true; });
+  const checkForUpdate = () => navigator.serviceWorker.getRegistration().then((r) => r && r.update()).catch(() => {});
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdate(); });
+  setInterval(checkForUpdate, 30 * 60 * 1000);
+}
