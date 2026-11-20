@@ -308,10 +308,13 @@ export async function localTranslate(text, srcCode, tgtCode) {
       if (/bad_alloc|OrtRun|out of memory/i.test(String(e && e.message))) { try { await call({ op: 'dispose', model: st.model }); } catch (x) {} e.noMemory = true; }
       throw e;
     }
-    cur = r.text;
+    // موديلات Opus متعددة اللغات (en→ar, en→zh) بتحتاج علامة لغة في أول النص زي «>>ara<<»، وأحياناً بترجّعها
+    // في أول الترجمة (مثلاً «>>ara<> مرحباً…»). بنشيلها عشان ما تظهرش للمستخدم ولا تتنطق.
+    cur = stripLangToken(r.text);
   }
   return cur.trim() || null;
 }
+export const stripLangToken = (s) => String(s || '').replace(/^\s*(?:>{1,2}\s*[a-zA-Z_]{2,12}\s*<{0,2}>?\s*)+/, '');
 
 // ---------- التعرّف على الصوت على الجهاز ----------
 export function installedWhisper() {
