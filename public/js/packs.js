@@ -6,7 +6,9 @@ const MANIFEST_KEY = 'las_packs_v2';
 
 // ---------- الكتالوج (Xenova/opus-mt: الأسماء مؤكدة من HuggingFace، ما عدا ما هو مذكور) ----------
 export let OPUS = {
-  ar: { to: 'Xenova/opus-mt-en-ar', from: 'Xenova/opus-mt-ar-en', prefix: '>>ara<< ' },
+  // من غير علامة لغة: اتجرّب على الموديل الحقيقي إن «>>ara<<» بتلخبطه وبيطلّع أقواس زي «<>البارا><<استمع إلي»،
+  // ومن غيرها الترجمة نضيفة («الإصغاء إليّ»).
+  ar: { to: 'Xenova/opus-mt-en-ar', from: 'Xenova/opus-mt-ar-en', prefix: '' },
   de: { to: 'Xenova/opus-mt-en-de', from: 'Xenova/opus-mt-de-en' },
   es: { to: 'Xenova/opus-mt-en-es', from: 'Xenova/opus-mt-es-en' },
   fr: { to: 'Xenova/opus-mt-en-fr', from: 'Xenova/opus-mt-fr-en' },
@@ -301,20 +303,35 @@ export async function localTranslate(text, srcCode, tgtCode) {
   if (!p) return null;
   let cur = String(text);
   for (const st of p.steps) {
-    let r;
-    try { r = await call({ op: 'translate', model: st.model, text: (st.prefix || '') + cur, opts: st.opts }); }
-    catch (e) {
-      // نفاد الذاكرة: نحرّر الموديل الثقيل كي لا يعطّل بقية الموديلات
-      if (/bad_alloc|OrtRun|out of memory/i.test(String(e && e.message))) { try { await call({ op: 'dispose', model: st.model }); } catch (x) {} e.noMemory = true; }
-      throw e;
+    // جملة جملة: الموديلات الصغيرة لما ياخدوا كلام طويل فيه كذا جملة بيسقطوا جمل منه
+    // (اتجرّب: «Listen to me. What I'm gonna do…» طلعت من غير «Listen to me»).
+    const parts = splitSentencesLocal(cur), outs = [];
+    for (const part of parts) {
+      let r;
+      try { r = await call({ op: 'translate', model: st.model, text: (st.prefix || '') + part, opts: st.opts }); }
+      catch (e) {
+        // نفاد الذاكرة: نحرّر الموديل الثقيل كي لا يعطّل بقية الموديلات
+        if (/bad_alloc|OrtRun|out of memory/i.test(String(e && e.message))) { try { await call({ op: 'dispose', model: st.model }); } catch (x) {} e.noMemory = true; }
+        throw e;
+      }
+      const o = stripLangToken(r.text);
+      if (o) outs.push(o);
     }
-    // موديلات Opus متعددة اللغات (en→ar, en→zh) بتحتاج علامة لغة في أول النص زي «>>ara<<»، وأحياناً بترجّعها
-    // في أول الترجمة (مثلاً «>>ara<> مرحباً…»). بنشيلها عشان ما تظهرش للمستخدم ولا تتنطق.
-    cur = stripLangToken(r.text);
+    cur = outs.join(' ');
   }
   return cur.trim() || null;
 }
-export const stripLangToken = (s) => String(s || '').replace(/^\s*(?:>{1,2}\s*[a-zA-Z_]{2,12}\s*<{0,2}>?\s*)+/, '');
+const splitSentencesLocal = (t) => {
+  const parts = (String(t).match(/[^.!?؟。！？\n]+[.!?؟。！？]*/g) || [String(t)]).map((x) => x.trim()).filter(Boolean);
+  return parts.length ? parts : [String(t)];
+};
+// علامات اللغة وبواقيها (زي «>>ara<>» أو «<>ara>>») ممكن ترجع في الترجمة؛ والترجمة نفسها عمرها ما بتحتاج < أو >
+// متكررة، فبنشيل العلامات كاملة وأي تكرار للرموز دي.
+export const stripLangToken = (s) => String(s || '')
+  .replace(/(?:>>|<<|<>|><)\s*[a-zA-Z]{2,4}(?:_[a-zA-Z]{2,5})?\s*[<>]*/g, ' ')
+  .replace(/[<>]{2,}/g, ' ')
+  .replace(/^\s*[<>]+\s*/, '')
+  .replace(/\s{2,}/g, ' ').trim();
 
 // ---------- التعرّف على الصوت على الجهاز ----------
 export function installedWhisper() {
