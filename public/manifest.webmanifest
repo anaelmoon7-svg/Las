@@ -2,7 +2,7 @@
   "id": "./app.html",
   "name": "منصة لاس — المترجم الصوتي الفوري",
   "short_name": "لاس LAS",
-  "description": "مترجم صوتي فوري لـ 14 لغة مع نطق مقسّم بالعربي.",
+  "description": "مترجم صوتي فوري لـ 14 لغة مع نطق مقسّم بالعربي. من مشروعات VERIFIED Media Group.",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "./app.html",
