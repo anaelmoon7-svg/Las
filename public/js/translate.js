@@ -137,7 +137,9 @@ async function myMemoryOnce(fetchImpl, text, sl, tl, ms) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---------- الكاش ----------
-const CACHE_KEY = 'las_tcache_v1';
+// v2: الذاكرة القديمة كان فيها ترجمات من موديل الجهاز (أضعف) وترجمات بالأقواس، فبنبدأ ذاكرة جديدة نضيفة
+const CACHE_KEY = 'las_tcache_v2';
+try { localStorage.removeItem('las_tcache_v1'); } catch (e) {}
 const MEM = new Map();
 // علامات اللغة بتاعة موديلات الجهاز (زي «>>ara<<» أو «>>ara<>»): ممكن تيجي في أول الترجمة أو في نصها،
 // والترجمات القديمة اتحفظت بيها في الذاكرة قبل الإصلاح، فكانت بتظهر وتتنطق حتى والنت شغال.
@@ -203,7 +205,8 @@ export function createTranslator(opts = {}) {
       if (!hasLocal) return null;
       try {
         const r = await local(t, srcCode, tgtCode);
-        if (r) { const c = cleanTranslation(r); if (c) { remember(key, c); return { text: c, via: 'local' }; } }
+        // ترجمة الجهاز ما بتتحفظش في الذاكرة: عشان لما النت يرجع، الجملة دي تتترجم من جوجل (أدق) مش تطلع من الذاكرة
+        if (r) { const c = cleanTranslation(r); if (c) return { text: c, via: 'local' }; }
       } catch (e) { reasons.push('local:' + e.message); }
       return null;
     };
@@ -218,7 +221,10 @@ export function createTranslator(opts = {}) {
       let via = null;
       let onlineOk = true;
       for (const c of chunks) {
-        const r = await translateChunk(c, sl, tl, reasons, hasLocal);
+        // دايماً المحاولة الكاملة بالنت (جوجل مرتين ثم MyMemory) قبل موديل الجهاز.
+        // قبل كده لو فيه حزمة متنزلة، جوجل كانت بتاخد فرصة واحدة 3.5 ثانية بس، ولو اتأخرت (عادي على نت الموبايل)
+        // الترجمة كانت بتيجي من الموديل الصغير: بيختصر ويترجم حرفي ويزوّد جمل من عنده.
+        const r = await translateChunk(c, sl, tl, reasons, false);
         if (!r) { onlineOk = false; break; }
         outs.push(r.text); via = via === 'mymemory' ? 'mymemory' : r.via;
       }

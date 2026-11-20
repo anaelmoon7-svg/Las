@@ -3,7 +3,7 @@
    - القواميس الكبيرة (الإنجليزي/الياباني) والمكتبات تُحفظ عند أول استخدام.
    - لا يتدخل في طلبات الترجمة والنطق ولا في تنزيل الموديلات (cross-origin). */
 
-const VERSION = 'las-v25';
+const VERSION = 'las-v26';
 const SHELL_CACHE = `${VERSION}-shell`;
 const BIG_CACHE = `${VERSION}-big`;
 
