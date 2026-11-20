@@ -188,6 +188,8 @@ function speakNet(text, l, slow, done) {
 }
 function stopSpeaking() { speakSeq++; try { netAudio && netAudio.pause(); } catch (e) {} try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} }
 function speak(text, code, slow, done) {
+  // حماية أخيرة: ما ننطقش علامات لغة الموديلات (>>ara<<) لو وصلت لأي سبب
+  text = String(text || '').replace(/\s*(?:>>|<<)\s*[a-zA-Z]{2,4}(?:_[a-zA-Z]{2,5})?\s*(?:<{1,2}>?|>{1,2})\s*/g, ' ').trim();
   if (!text) { if (done) done(); return; }
   stopSpeaking();
   const l = meta(code), mode = voiceMode(), online = navigator.onLine !== false;

@@ -139,10 +139,15 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // ---------- الكاش ----------
 const CACHE_KEY = 'las_tcache_v1';
 const MEM = new Map();
+// علامات اللغة بتاعة موديلات الجهاز (زي «>>ara<<» أو «>>ara<>»): ممكن تيجي في أول الترجمة أو في نصها،
+// والترجمات القديمة اتحفظت بيها في الذاكرة قبل الإصلاح، فكانت بتظهر وتتنطق حتى والنت شغال.
+// بننضّف أي ترجمة من أي مصدر (ذاكرة/جهاز/نت/جمل جاهزة) قبل ما تطلع.
+const LANG_TOKEN = /\s*(?:>>|<<)\s*[a-zA-Z]{2,4}(?:_[a-zA-Z]{2,5})?\s*(?:<{1,2}>?|>{1,2})\s*/g;
+export const cleanTranslation = (s) => String(s || '').replace(LANG_TOKEN, ' ').replace(/\s{2,}/g, ' ').trim();
 function loadCache() {
   try {
     const raw = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
-    raw.forEach(([k, v]) => MEM.set(k, v));
+    raw.forEach(([k, v]) => MEM.set(k, cleanTranslation(v)));
   } catch (e) { /* التخزين غير متاح */ }
 }
 function saveCache() {
@@ -190,7 +195,7 @@ export function createTranslator(opts = {}) {
     if (sl === tl) return { text: t, via: 'same' };
 
     const key = sl + '>' + tl + '|' + t;
-    if (MEM.has(key)) return { text: MEM.get(key), via: 'cache' };
+    if (MEM.has(key)) return { text: cleanTranslation(MEM.get(key)), via: 'cache' };
 
     const reasons = [];
     const hasLocal = !!(local && (!canLocal || canLocal(srcCode, tgtCode)));
@@ -198,7 +203,7 @@ export function createTranslator(opts = {}) {
       if (!hasLocal) return null;
       try {
         const r = await local(t, srcCode, tgtCode);
-        if (r) { remember(key, r); return { text: r, via: 'local' }; }
+        if (r) { const c = cleanTranslation(r); if (c) { remember(key, c); return { text: c, via: 'local' }; } }
       } catch (e) { reasons.push('local:' + e.message); }
       return null;
     };
@@ -220,7 +225,7 @@ export function createTranslator(opts = {}) {
       if (onlineOk && outs.length) {
         const res = outs.join(' ');
         remember(key, res);
-        return { text: res, via };
+        return { text: cleanTranslation(res), via };
       }
     } else reasons.push('offline');
 
