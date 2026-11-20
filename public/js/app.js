@@ -37,7 +37,7 @@ let otherTurn = false;
 
 const enginePromise = import('./translate.js').then((m) => ({ m, t: m.createTranslator() }));
 const phoneticPromise = import('./phonetics.js');
-const VIA = { google: 'ترجمة جوجل', mymemory: 'ترجمة MyMemory', cache: 'من الذاكرة', phrasebook: 'جملة جاهزة · بدون إنترنت', local: 'موديل على جهازك · بدون إنترنت', same: '' };
+const VIA = { google: 'ترجمة جوجل', mymemory: 'ترجمة MyMemory', cache: 'من الذاكرة', phrasebook: 'جملة جاهزة · بدون إنترنت', local: 'موديل على جهازك · بدون إنترنت', 'local-fallback': 'موديل على جهازك · جوجل وMyMemory ما ردّوش (الترجمة أضعف)', same: '' };
 
 function setStatus(msg, kind) { const s = $('status'); s.textContent = msg; s.className = 'status' + (kind ? ' ' + kind : ''); }
 
@@ -114,6 +114,7 @@ async function translateNow(opts = {}) {
     return res.text;
   } catch (e) {
     if (my !== seq) return lastOut;
+    if (opts.partial) return lastOut; // ترجمة لحظية فشلت: نسيب اللي ظاهر، والجملة الكاملة هتتترجم لما يسكت
     lastOut = ''; out.className = 'out-text err'; $('via').textContent = ''; $('phon-wrap').hidden = true;
     out.textContent = navigator.onLine === false
       ? 'لا يوجد إنترنت، ولا توجد حزمة ترجمة منزّلة لهاتين اللغتين. نزّل الحزمة من الإعدادات لتترجم بدون اتصال.'

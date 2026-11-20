@@ -211,8 +211,17 @@ export function createTranslator(opts = {}) {
       return null;
     };
 
-    // تفضيل الجهاز أو لا يوجد اتصال: الموديل المحلي أولاً
-    if (hasLocal && (preferLocal || isOffline())) { const r = await tryLocal(); if (r) return r; }
+    // ترجمة لحظية أثناء الكلام: جوجل مرة واحدة بس. ما نستهلكش MyMemory (ليه حد يومي) ولا نشغّل موديل الجهاز
+    // على جمل ناقصة؛ لو فشلت الترجمة اللحظية بتفضل اللي قبلها ظاهرة، والجملة الكاملة بتاخد السلسلة كلها.
+    if (o.partial) {
+      if (isOffline()) throw new NoTranslation(['offline-partial']);
+      try { return { text: cleanTranslation(await googleOnce(fetchImpl, t, sl, tl, 4000)), via: 'google' }; }
+      catch (e) { throw new NoTranslation(['google-partial:' + e.message]); }
+    }
+
+    // من غير نت: الموديل المحلي أولاً. ومع النت بنتجاهل «فضّل الجهاز»: الموديل الصغير أضعف بكتير من جوجل
+    // (بيختصر ويترجم حرفي ويزوّد جمل)، فبيشتغل مع النت بس لو جوجل وMyMemory الاتنين فشلوا.
+    if (hasLocal && isOffline()) { const r = await tryLocal(); if (r) return r; }
 
     // الأونلاين: كل جزء على حدة
     if (!isOffline()) {
@@ -236,7 +245,7 @@ export function createTranslator(opts = {}) {
     } else reasons.push('offline');
 
     // الموديل المحلي كخطة بديلة
-    if (!(hasLocal && (preferLocal || isOffline()))) { const r = await tryLocal(); if (r) return r; }
+    if (!(hasLocal && isOffline())) { const r = await tryLocal(); if (r) return { ...r, via: isOffline() ? 'local' : 'local-fallback' }; }
 
     // الجمل الجاهزة
     if (sl === 'ar') {

@@ -109,7 +109,7 @@ export function initPacks({ root, languages, translator }) {
     let h = `<div class="p-3 rounded-2xl bg-zinc-900 border border-amber-500/30 space-y-2">
       <p class="text-xs font-black text-amber-300">📦 حزم الترجمة على الجهاز</p>
       <p class="text-[11px] text-zinc-400">تُنزَّل مرة واحدة من الإنترنت ثم تعمل بدون اتصال. الأحجام تقديرية حتى يكتمل التنزيل ثم يظهر الحجم الفعلي. يُفضَّل التنزيل على واي فاي.</p>
-      <label class="flex items-center gap-2 text-xs text-zinc-300"><input type="checkbox" data-act="prefer" ${prefer ? 'checked' : ''}> فضّل الترجمة على الجهاز حتى مع وجود إنترنت (أسرع للنصوص القصيرة، جودته أقل من جوجل)</label>
+      <p class="text-[11px] text-zinc-400">مع النت الترجمة دايماً من جوجل (الأدق). الحزم دي بتشتغل لما النت يقطع.</p>
       <p class="text-[11px] text-zinc-500">${storageLine}</p>${evictNote ? `<p class="text-[11px] text-amber-300">${evictNote}</p>` : ''}</div>`;
 
     h += '<div class="space-y-2">';
